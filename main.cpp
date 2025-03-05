@@ -1,13 +1,17 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
+#include <vector>
 
 #define MAX_VELOCITY 150
+#define ACCELERATION 300
 
-enum GameState { MENU, HIGHSCORE, PLAYING, EXIT };
+enum GameState { MENU, PLAYING, EXIT };
 
 struct Square {
     float x, y;
     float vx, vy;
+    float ax, ay;
     float size;
     bool isJumping;
 };
@@ -16,149 +20,124 @@ void handleInput(Square &square) {
     const Uint8* state = SDL_GetKeyboardState(NULL);
     
     if (state[SDL_SCANCODE_LEFT]) {
-        square.vx = -MAX_VELOCITY;
+        square.ax = -ACCELERATION;
+    } else if (state[SDL_SCANCODE_RIGHT]) {
+        square.ax = ACCELERATION;
+    } else {
+        square.ax = 0;
     }
-    if (state[SDL_SCANCODE_RIGHT]) {
-        square.vx = MAX_VELOCITY;
-    }
+    
     if (state[SDL_SCANCODE_UP] && !square.isJumping) {
-        square.vy = -250;  // Nhảy thấp hơn
+        square.vy = -250;
         square.isJumping = true;
     }
 }
 
-void renderMenu(SDL_Renderer* renderer, int selected) {
+void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     
-    SDL_Rect startRect = { 500, 200, 200, 50 };
-    SDL_Rect scoreRect = { 500, 300, 200, 50};
-    SDL_Rect exitRect = { 500, 400, 200, 50 };
-
-    if (selected == 0) SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Màu vàng cho lựa chọn hiện tại
-    SDL_RenderFillRect(renderer, &startRect);
-
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    if (selected == 1) SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
-    SDL_RenderFillRect(renderer, &exitRect);
-
+    SDL_Color white = {255, 255, 255};
+    SDL_Color yellow = {255, 255, 0};
+    SDL_Surface* textSurface;
+    SDL_Texture* textTexture;
+    SDL_Rect textRect;
+    
+    SDL_Color color = (selected == 0) ? yellow : white;
+    textSurface = TTF_RenderText_Solid(font, "Start", color);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    textRect = {550, 200, textSurface->w, textSurface->h};
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+    
+    color = (selected == 1) ? yellow : white;
+    textSurface = TTF_RenderText_Solid(font, "Exit", color);
+    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    textRect = {550, 300, textSurface->w, textSurface->h};
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_FreeSurface(textSurface);
+    SDL_DestroyTexture(textTexture);
+    
     SDL_RenderPresent(renderer);
 }
 
 int main(int argc, char* argv[]) {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
-        return -1;
-    }
-
-    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 650, SDL_WINDOW_SHOWN);
-    if (!window) {
-        std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
-        return -1;
-    }
-
+    SDL_Init(SDL_INIT_VIDEO);
+    TTF_Init();
+    
+    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 640, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
-        std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return -1;
+    TTF_Font* font = TTF_OpenFont("data/Font/pixel-operator-bold.ttf", 28);
+    if (!font) {
+        std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
     }
-
+    
     GameState gameState = MENU;
     int selectedOption = 0;
-
-    Square square = { 750, 225, 0, 0, 35, false };
+    Square square = {750, 225, 0, 0, 0, 0, 35, false};
     const float gravity = 600.0f;
     const float friction = 0.8f;
     Uint32 lastTime = SDL_GetTicks();
-
     bool quit = false;
     SDL_Event e;
-
+    
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
-            }
-            if (gameState == MENU) {
-                if (e.type == SDL_KEYDOWN) {
-                    if (e.key.keysym.sym == SDLK_UP) {
-                        selectedOption = 0;  // Chọn "Start"
-                    }
-                    if (e.key.keysym.sym == SDLK_DOWN) {
-                        selectedOption = 1;  // Chọn "Exit"
-                    }
-                    if (e.key.keysym.sym == SDLK_RETURN) {
-                        if (selectedOption == 0) {
-                            gameState = PLAYING;  // Bắt đầu game
-                        } else {
-                            quit = true;  // Thoát game
-                        }
-                    }
+            if (e.type == SDL_QUIT) quit = true;
+            if (gameState == MENU && e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_UP) selectedOption = 0;
+                if (e.key.keysym.sym == SDLK_DOWN) selectedOption = 1;
+                if (e.key.keysym.sym == SDLK_RETURN) {
+                    if (selectedOption == 0) gameState = PLAYING;
+                    else quit = true;
                 }
             }
         }
-
         if (gameState == MENU) {
-            renderMenu(renderer, selectedOption);
+            renderMenu(renderer, selectedOption, font);
             continue;
         }
-
+        
         Uint32 currentTime = SDL_GetTicks();
         float deltaTime = (currentTime - lastTime) / 1000.0f;
         lastTime = currentTime;
-
+        
         handleInput(square);
-
+        square.vx += square.ax * deltaTime;
         square.vy += gravity * deltaTime;
-
-        const Uint8* state = SDL_GetKeyboardState(NULL);
-        bool moving = state[SDL_SCANCODE_LEFT] || state[SDL_SCANCODE_RIGHT];
-
-        if (!moving && !square.isJumping) {
-            square.vx *= friction;
-            if (labs(square.vx) < 2) square.vx = 0;
-        }
-
+        
+        if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
+        if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
+        if (square.vy > MAX_VELOCITY) square.vy = MAX_VELOCITY;
+        
+        square.vx *= friction;
+        if (labs(square.vx) < 2) square.vx = 0;
+        
         square.x += square.vx * deltaTime;
         square.y += square.vy * deltaTime;
-
-        if (square.y + square.size > 650) {
-            square.y = 650 - square.size;
+        
+        if (square.y + square.size > 640) {
+            square.y = 640 - square.size;
             square.vy = 0;
             square.isJumping = false;
         }
-
-        if (square.x < 0) {
-            square.x = 0;
-            square.vx = 0;
-        }
-        if (square.x + square.size > 1200) {
-            square.x = 1200 - square.size;
-            square.vx = 0;
-        }
-        if (square.y < 0) {
-            square.y = 0;
-            square.vy = 0;
-        }
-
+        
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
-
-        SDL_Rect rect = { static_cast<int>(square.x), static_cast<int>(square.y), static_cast<int>(square.size), static_cast<int>(square.size) };
+        
+        SDL_Rect rect = {static_cast<int>(square.x), static_cast<int>(square.y), static_cast<int>(square.size), static_cast<int>(square.size)};
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderFillRect(renderer, &rect);
-
+        
         SDL_RenderPresent(renderer);
     }
-
+    
+    TTF_CloseFont(font);
+    TTF_Quit();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
+    
     return 0;
 }
