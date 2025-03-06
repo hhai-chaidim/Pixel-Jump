@@ -18,7 +18,7 @@ struct Square {
 
 void handleInput(Square &square) {
     const Uint8* state = SDL_GetKeyboardState(NULL);
-    
+
     if (state[SDL_SCANCODE_LEFT]) {
         square.ax = -ACCELERATION;
     } else if (state[SDL_SCANCODE_RIGHT]) {
@@ -26,7 +26,7 @@ void handleInput(Square &square) {
     } else {
         square.ax = 0;
     }
-    
+
     if (state[SDL_SCANCODE_UP] && !square.isJumping) {
         square.vy = -250;
         square.isJumping = true;
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     int selectedOption = 0;
     Square square = {750, 225, 0, 0, 0, 0, 35, false};
     const float gravity = 600.0f;
-    const float friction = 0.8f;
+    const float friction = 0.990f;
     Uint32 lastTime = SDL_GetTicks();
     bool quit = false;
     SDL_Event e;
@@ -104,24 +104,34 @@ int main(int argc, char* argv[]) {
         lastTime = currentTime;
         
         handleInput(square);
-        square.vx += square.ax * deltaTime;
-        square.vy += gravity * deltaTime;
-        
-        if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
-        if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
-        if (square.vy > MAX_VELOCITY) square.vy = MAX_VELOCITY;
-        
-        square.vx *= friction;
-        if (labs(square.vx) < 2) square.vx = 0;
-        
-        square.x += square.vx * deltaTime;
-        square.y += square.vy * deltaTime;
-        
-        if (square.y + square.size > 640) {
-            square.y = 640 - square.size;
-            square.vy = 0;
-            square.isJumping = false;
+
+    square.vx += square.ax * deltaTime;
+    square.vy += gravity * deltaTime;
+
+    if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
+    if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
+
+    if (square.vy > MAX_VELOCITY) square.vy = MAX_VELOCITY;
+
+    if (square.ax == 0) {
+        float deceleration = ACCELERATION * deltaTime;
+        if (square.vx > 0) {
+            square.vx -= deceleration;
+            if (square.vx < 0) square.vx = 0;
+        } else if (square.vx < 0) {
+            square.vx += deceleration;
+            if (square.vx > 0) square.vx = 0;
         }
+    }
+
+    square.x += square.vx * deltaTime;
+    square.y += square.vy * deltaTime;
+
+    if (square.y + square.size > 640) {
+        square.y = 640 - square.size;
+        square.vy = 0;
+        square.isJumping = false;
+    }
         
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
