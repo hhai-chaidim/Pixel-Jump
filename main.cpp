@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 #include <iostream>
 #include <vector>
 
@@ -47,6 +49,7 @@ void handleInput(Square &square) {
 }
 
 void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font) {
+    const char* menu[] = {"Start", "Settings", "Exit"};
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     
@@ -55,35 +58,21 @@ void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font) {
     SDL_Surface* textSurface;
     SDL_Texture* textTexture;
     SDL_Rect textRect;
-    
-    SDL_Color color = (selected == 0) ? yellow : white;
-    textSurface = TTF_RenderText_Solid(font, "Start", color);
-    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    textRect = {550, 200, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-    
-    color = (selected == 1) ? yellow : white;
-    textSurface = TTF_RenderText_Solid(font, "Settings", color);
-    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    textRect = {550, 300, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-    
-    color = (selected == 2) ? yellow : white;
-    textSurface = TTF_RenderText_Solid(font, "Exit", color);
-    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    textRect = {550, 400, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-    
+
+    for (int i = 0; i < 3; i++){
+        SDL_Color color = (selected == i) ? yellow : white;
+        textSurface = TTF_RenderText_Solid(font, menu[i], color);
+        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
     SDL_RenderPresent(renderer);
 }
 
 void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
+    const char* setting[] = {"Easy", "Medium", "Hard"};
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     
@@ -92,31 +81,17 @@ void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
     SDL_Surface* textSurface;
     SDL_Texture* textTexture;
     SDL_Rect textRect;
-    
-    SDL_Color color = (selected == 0) ? yellow : white;
-    textSurface = TTF_RenderText_Solid(font, "Easy", color);
-    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    textRect = {550, 200, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-    
-    color = (selected == 1) ? yellow : white;
-    textSurface = TTF_RenderText_Solid(font, "Medium", color);
-    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    textRect = {550, 300, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-    
-    color = (selected == 2) ? yellow : white;
-    textSurface = TTF_RenderText_Solid(font, "Hard", color);
-    textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    textRect = {550, 400, textSurface->w, textSurface->h};
-    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-    SDL_FreeSurface(textSurface);
-    SDL_DestroyTexture(textTexture);
-    
+
+    for (int i = 0; i <3; i++){
+        SDL_Color color = (selected == i) ? yellow : white;
+        textSurface = TTF_RenderText_Solid(font, setting[i], color);
+        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
+
     SDL_RenderPresent(renderer);
 }
 
@@ -197,16 +172,14 @@ int main(int argc, char* argv[]) {
                 square.vy = 0;
                 square.isJumping = false;
             }
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            SDL_Rect rect = {static_cast<int>(square.x), static_cast<int>(square.y), static_cast<int>(square.size), static_cast<int>(square.size)};
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            SDL_RenderFillRect(renderer, &rect);
+            SDL_RenderPresent(renderer);
         }
-        
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-        
-        SDL_Rect rect = {static_cast<int>(square.x), static_cast<int>(square.y), static_cast<int>(square.size), static_cast<int>(square.size)};
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &rect);
-        
-        SDL_RenderPresent(renderer);
     };
     
     TTF_CloseFont(font);
