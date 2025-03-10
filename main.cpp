@@ -8,7 +8,7 @@
 #define MAX_VELOCITY 150
 #define ACCELERATION 300
 
-enum GameState { MENU, SETTINGS, PLAYING, EXIT };
+enum GameState { MENU, SETTINGS, PLAYING, PAUSED, EXIT };
 
 enum Difficulty { EASY, MEDIUM, HARD };
 
@@ -72,7 +72,7 @@ void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font) {
 }
 
 void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
-    const char* setting[] = {"Easy", "Medium", "Hard"};
+    const char* setting[] = {"Easy", "Medium", "Hard", "Return"};
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     
@@ -82,7 +82,7 @@ void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
     SDL_Texture* textTexture;
     SDL_Rect textRect;
 
-    for (int i = 0; i <3; i++){
+    for (int i = 0; i < 4; i++){
         SDL_Color color = (selected == i) ? yellow : white;
         textSurface = TTF_RenderText_Solid(font, setting[i], color);
         textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
@@ -91,7 +91,29 @@ void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
         SDL_FreeSurface(textSurface);
         SDL_DestroyTexture(textTexture);
     }
+    SDL_RenderPresent(renderer);
+}
 
+void renderPaused(SDL_Renderer* renderer, int selected, TTF_Font* font) {
+    const char* pauseMenu[] = {"Resume", "Exit"};
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    
+    SDL_Color white = {255, 255, 255};
+    SDL_Color yellow = {255, 255, 0};
+    SDL_Surface* textSurface;
+    SDL_Texture* textTexture;
+    SDL_Rect textRect;
+
+    for (int i = 0; i < 2; i++){
+        SDL_Color color = (selected == i) ? yellow : white;
+        textSurface = TTF_RenderText_Solid(font, pauseMenu[i], color);
+        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
+        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        SDL_FreeSurface(textSurface);
+        SDL_DestroyTexture(textTexture);
+    }
     SDL_RenderPresent(renderer);
 }
 
@@ -108,6 +130,8 @@ int main(int argc, char* argv[]) {
     
     GameState gameState = MENU;
     int selectedOption = 0;
+    int settingsOption = 0;
+    int pausedOption = 0;
     Square square = {750, 225, 0, 0, 0, 0, 35, false};
     const float gravity = 600.0f;
     const float friction = 0.8f;
@@ -128,16 +152,30 @@ int main(int argc, char* argv[]) {
                 }
             }
             else if (gameState == SETTINGS && e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_UP) difficulty = static_cast<Difficulty>((difficulty + 2) % 3);
-                if (e.key.keysym.sym == SDLK_DOWN) difficulty = static_cast<Difficulty>((difficulty + 1) % 3);
+                if (e.key.keysym.sym == SDLK_UP && settingsOption > 0) settingsOption--;
+                if (e.key.keysym.sym == SDLK_DOWN && settingsOption < 3) settingsOption++;
                 if (e.key.keysym.sym == SDLK_RETURN) {
+                    if (settingsOption == 0) difficulty = EASY;
+                    else if (settingsOption == 1) difficulty = MEDIUM;
+                    else if (settingsOption == 2) difficulty = HARD;
+                    else if (settingsOption == 3) gameState = MENU;
                     adjustDifficulty();
-                    gameState = MENU;
+                }
+            }
+            else if (gameState == PLAYING && e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_p) gameState = PAUSED;
+            }
+            else if (gameState == PAUSED && e.type == SDL_KEYDOWN) {
+                if (e.key.keysym.sym == SDLK_UP || e.key.keysym.sym == SDLK_DOWN) pausedOption = (pausedOption + 1) % 2;
+                if (e.key.keysym.sym == SDLK_RETURN) {
+                    if (pausedOption == 0) gameState = PLAYING;
+                    else quit = true;
                 }
             }
         }
         if (gameState == MENU) renderMenu(renderer, selectedOption, font);
-        else if (gameState == SETTINGS) renderSettings(renderer, difficulty, font);
+        else if (gameState == SETTINGS) renderSettings(renderer, settingsOption, font);
+        else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font);
         else if (gameState == PLAYING) {
             Uint32 currentTime = SDL_GetTicks();
             float deltaTime = (currentTime - lastTime) / 1000.0f;
@@ -190,3 +228,5 @@ int main(int argc, char* argv[]) {
     
     return 0;
 }
+
+//DITMEMAY
