@@ -7,6 +7,7 @@
 
 #define MAX_VELOCITY 150
 #define ACCELERATION 300
+#define FRAME_DELAY 50
 
 enum GameState { MENU, SETTINGS, PLAYING, PAUSED, EXIT };
 
@@ -18,6 +19,8 @@ struct Square {
     float ax, ay;
     float size;
     bool isJumping;
+    int currentFrame;
+    Uint32 lastFrameTime;
 };
 
 Difficulty difficulty = MEDIUM;
@@ -121,18 +124,23 @@ int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
     
-    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 640, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 680, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     TTF_Font* font = TTF_OpenFont("data/Font/pixel-operator-bold.ttf", 28);
     if (!font) {
         std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
+    } 
+    SDL_Texture* characterTexture = IMG_LoadTexture(renderer, "data/Pink/Idle (32x32).png");
+    if (!characterTexture) {
+        std::cerr << "Failed to load character image! SDL_image Error: " << IMG_GetError() << std::endl;
     }
-    
+
+
     GameState gameState = MENU;
     int selectedOption = 0;
     int settingsOption = 0;
     int pausedOption = 0;
-    Square square = {750, 225, 0, 0, 0, 0, 35, false};
+    Square square = {750, 225, 0, 0, 0, 0, 35, false, 0, 0};
     const float gravity = 600.0f;
     const float friction = 0.8f;
     Uint32 lastTime = SDL_GetTicks();
@@ -188,7 +196,6 @@ int main(int argc, char* argv[]) {
 
             if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
             if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
-
             if (square.vy > MAX_VELOCITY) square.vy = MAX_VELOCITY;
 
             if (square.ax == 0) {
@@ -211,11 +218,18 @@ int main(int argc, char* argv[]) {
                 square.isJumping = false;
             }
 
+            // Cập nhật frame animation
+            if (currentTime - square.lastFrameTime > FRAME_DELAY) {
+                square.currentFrame = (square.currentFrame + 1) % 12;
+                square.lastFrameTime = currentTime;
+            }
+
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
-            SDL_Rect rect = {static_cast<int>(square.x), static_cast<int>(square.y), static_cast<int>(square.size), static_cast<int>(square.size)};
-            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            SDL_RenderFillRect(renderer, &rect);
+            
+            SDL_Rect srcRect = {square.currentFrame * 32, 0, 32, 32};  // Cắt frame từ spritesheet
+            SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 50, 50};
+            SDL_RenderCopy(renderer, characterTexture, &srcRect, &destRect);
             SDL_RenderPresent(renderer);
         }
     };
@@ -223,10 +237,9 @@ int main(int argc, char* argv[]) {
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_DestroyRenderer(renderer);
+    SDL_DestroyTexture(characterTexture);
     SDL_DestroyWindow(window);
     SDL_Quit();
     
     return 0;
 }
-
-//DITMEMAY
