@@ -7,7 +7,7 @@
 
 #define MAX_VELOCITY 150
 #define ACCELERATION 300
-#define FRAME_DELAY 50
+#define FRAME_DELAY 75
 
 enum GameState { MENU, SETTINGS, PLAYING, PAUSED, EXIT };
 
@@ -19,8 +19,11 @@ struct Square {
     float ax, ay;
     float size;
     bool isJumping;
-    int currentFrame;
+    int currentFrameX;
+    int currentFrameY;
     Uint32 lastFrameTime;
+    bool facing;
+    bool isMoving;
 };
 
 Difficulty difficulty = MEDIUM;
@@ -36,11 +39,16 @@ void adjustDifficulty() {
 
 void handleInput(Square &square) {
     const Uint8* state = SDL_GetKeyboardState(NULL);
+    square.isMoving = false;
 
     if (state[SDL_SCANCODE_LEFT]) {
         square.ax = -ACCELERATION;
+        square.facing = false;
+        square.isMoving = true;
     } else if (state[SDL_SCANCODE_RIGHT]) {
         square.ax = ACCELERATION;
+        square.facing = true;
+        square.isMoving = true;
     } else {
         square.ax = 0;
     }
@@ -124,23 +132,25 @@ int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
     
-    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 680, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     TTF_Font* font = TTF_OpenFont("data/Font/pixel-operator-bold.ttf", 28);
     if (!font) {
         std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
     } 
-    SDL_Texture* characterTexture = IMG_LoadTexture(renderer, "data/Pink/Idle (32x32).png");
-    if (!characterTexture) {
+    SDL_Texture* idleTexture = IMG_LoadTexture(renderer, "data/Pink/Idle (32x32).png");
+    SDL_Texture* runTexture = IMG_LoadTexture(renderer, "data/Pink/Run (32x32).png");
+    SDL_Texture* jumpTexture = IMG_LoadTexture(renderer, "data/Pink/Jump.png");
+    SDL_Texture* fallTexture = IMG_LoadTexture(renderer, "data/Pink/Fall.png");
+    if (!idleTexture || !runTexture || !jumpTexture || !fallTexture) {
         std::cerr << "Failed to load character image! SDL_image Error: " << IMG_GetError() << std::endl;
     }
-
 
     GameState gameState = MENU;
     int selectedOption = 0;
     int settingsOption = 0;
     int pausedOption = 0;
-    Square square = {750, 225, 0, 0, 0, 0, 35, false, 0, 0};
+    Square square = {750, 225, 0, 0, 0, 0, 35, false, 0, 0, 0, true, false};
     const float gravity = 600.0f;
     const float friction = 0.8f;
     Uint32 lastTime = SDL_GetTicks();
@@ -212,24 +222,35 @@ int main(int argc, char* argv[]) {
             square.x += square.vx * deltaTime;
             square.y += square.vy * deltaTime;
 
-            if (square.y + square.size > 640) {
-                square.y = 640 - square.size;
+            if (square.y + square.size > 580) {
+                square.y = 580 - square.size;
                 square.vy = 0;
                 square.isJumping = false;
             }
 
-            // Cập nhật frame animation
             if (currentTime - square.lastFrameTime > FRAME_DELAY) {
-                square.currentFrame = (square.currentFrame + 1) % 12;
+                square.currentFrameX = (square.currentFrameX + 1) % 3;
+                if (square.currentFrameX == 0){
+                	square.currentFrameY = (square.currentFrameY + 1) % 4;
+                }
                 square.lastFrameTime = currentTime;
             }
-
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);
-            
-            SDL_Rect srcRect = {square.currentFrame * 32, 0, 32, 32};  // Cắt frame từ spritesheet
+            SDL_RenderClear(renderer);          
+
+            SDL_Texture* currentTexture = square.isMoving ? runTexture : idleTexture;
+            SDL_Texture* jumpFallTexture = square.vy < 0 ? jumpTexture : fallTexture;
+            if (square.isJumping || square.vy < 0) {
+                SDL_Rect srcRect = {0, 0, 32, 32};
+                SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 50, 50};
+                SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
+                SDL_RenderCopyEx(renderer, jumpFallTexture, &srcRect, &destRect, 0, NULL, flip);
+            }
+            SDL_Rect srcRect = {square.currentFrameX * 32, 0, 32, 32};
             SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 50, 50};
-            SDL_RenderCopy(renderer, characterTexture, &srcRect, &destRect);
+            SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
+            SDL_RenderCopyEx(renderer, currentTexture, &srcRect, &destRect, 0, NULL, flip);
+            
             SDL_RenderPresent(renderer);
         }
     };
@@ -237,7 +258,10 @@ int main(int argc, char* argv[]) {
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_DestroyRenderer(renderer);
-    SDL_DestroyTexture(characterTexture);
+    SDL_DestroyTexture(idleTexture);
+    SDL_DestroyTexture(runTexture);
+    SDL_DestroyTexture(jumpTexture);
+    SDL_DestroyTexture(fallTexture);
     SDL_DestroyWindow(window);
     SDL_Quit();
     
