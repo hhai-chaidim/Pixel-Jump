@@ -4,10 +4,11 @@
 #include <SDL2/SDL_mixer.h>
 #include <iostream>
 #include <vector>
+#include "header/map.h"
 
 #define MAX_VELOCITY 150
 #define ACCELERATION 300
-#define FRAME_DELAY 75
+#define FRAME_DELAY 60
 
 enum GameState { MENU, SETTINGS, PLAYING, PAUSED, EXIT };
 
@@ -86,7 +87,7 @@ void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
     const char* setting[] = {"Easy", "Medium", "Hard", "Return"};
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
-    
+
     SDL_Color white = {255, 255, 255};
     SDL_Color yellow = {255, 255, 0};
     SDL_Surface* textSurface;
@@ -134,6 +135,7 @@ int main(int argc, char* argv[]) {
     
     SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 600, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    loadBackground(renderer, "data/BackGround/background2.png");
     TTF_Font* font = TTF_OpenFont("data/Font/pixel-operator-bold.ttf", 28);
     if (!font) {
         std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
@@ -201,6 +203,11 @@ int main(int argc, char* argv[]) {
             
             handleInput(square);
 
+            generatePlatforms();
+            updatePlatforms();
+            renderBackground(renderer);
+            renderPlatforms(renderer);
+
             square.vx += square.ax * deltaTime;
             square.vy += gravity * deltaTime;
 
@@ -236,7 +243,7 @@ int main(int argc, char* argv[]) {
                 square.lastFrameTime = currentTime;
             }
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-            SDL_RenderClear(renderer);          
+            SDL_RenderClear(renderer);
 
             SDL_Texture* currentTexture = square.isMoving ? runTexture : idleTexture;
             SDL_Texture* jumpFallTexture = square.vy < 0 ? jumpTexture : fallTexture;
