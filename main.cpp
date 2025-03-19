@@ -1,141 +1,11 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_image.h>
-#include <SDL2/SDL_mixer.h>
-#include <iostream>
-#include <vector>
-#include "header/map.h"
-
-#define MAX_VELOCITY 150
-#define ACCELERATION 300
-#define FRAME_DELAY 60
-
-enum GameState { MENU, SETTINGS, PLAYING, PAUSED, EXIT };
-
-enum Difficulty { EASY, MEDIUM, HARD };
-
-struct Square {
-    float x, y;
-    float vx, vy;
-    float ax, ay;
-    float size;
-    bool isJumping;
-    int currentFrameX;
-    int currentFrameY;
-    Uint32 lastFrameTime;
-    bool facing;
-    bool isMoving;
-};
-
-Difficulty difficulty = MEDIUM;
-float gravity = 600.0f;
-
-void adjustDifficulty() {
-    switch (difficulty) {
-        case EASY: gravity = 400.0f; break;
-        case MEDIUM: gravity = 700.0f; break;
-        case HARD: gravity = 1000.0f; break;
-    }
-}
-
-void handleInput(Square &square) {
-    const Uint8* state = SDL_GetKeyboardState(NULL);
-    square.isMoving = false;
-
-    if (state[SDL_SCANCODE_LEFT]) {
-        square.ax = -ACCELERATION;
-        square.facing = false;
-        square.isMoving = true;
-    } else if (state[SDL_SCANCODE_RIGHT]) {
-        square.ax = ACCELERATION;
-        square.facing = true;
-        square.isMoving = true;
-    } else {
-        square.ax = 0;
-    }
-
-    if (state[SDL_SCANCODE_UP] && !square.isJumping) {
-        square.vy = -300;
-        square.isJumping = true;
-    }
-}
-
-void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font) {
-    const char* menu[] = {"Start", "Settings", "Exit"};
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    
-    SDL_Color white = {255, 255, 255};
-    SDL_Color yellow = {255, 255, 0};
-    SDL_Surface* textSurface;
-    SDL_Texture* textTexture;
-    SDL_Rect textRect;
-
-    for (int i = 0; i < 3; i++){
-        SDL_Color color = (selected == i) ? yellow : white;
-        textSurface = TTF_RenderText_Solid(font, menu[i], color);
-        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
-        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-        SDL_FreeSurface(textSurface);
-        SDL_DestroyTexture(textTexture);
-    }
-    SDL_RenderPresent(renderer);
-}
-
-void renderSettings(SDL_Renderer* renderer, int selected, TTF_Font* font) {
-    const char* setting[] = {"Easy", "Medium", "Hard", "Return"};
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-
-    SDL_Color white = {255, 255, 255};
-    SDL_Color yellow = {255, 255, 0};
-    SDL_Surface* textSurface;
-    SDL_Texture* textTexture;
-    SDL_Rect textRect;
-
-    for (int i = 0; i < 4; i++){
-        SDL_Color color = (selected == i) ? yellow : white;
-        textSurface = TTF_RenderText_Solid(font, setting[i], color);
-        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
-        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-        SDL_FreeSurface(textSurface);
-        SDL_DestroyTexture(textTexture);
-    }
-    SDL_RenderPresent(renderer);
-}
-
-void renderPaused(SDL_Renderer* renderer, int selected, TTF_Font* font) {
-    const char* pauseMenu[] = {"Resume", "Exit"};
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    
-    SDL_Color white = {255, 255, 255};
-    SDL_Color yellow = {255, 255, 0};
-    SDL_Surface* textSurface;
-    SDL_Texture* textTexture;
-    SDL_Rect textRect;
-
-    for (int i = 0; i < 2; i++){
-        SDL_Color color = (selected == i) ? yellow : white;
-        textSurface = TTF_RenderText_Solid(font, pauseMenu[i], color);
-        textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
-        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
-        SDL_FreeSurface(textSurface);
-        SDL_DestroyTexture(textTexture);
-    }
-    SDL_RenderPresent(renderer);
-}
+#include "header/library.h"
 
 int main(int argc, char* argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
     
-    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1200, 600, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 640, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    loadBackground(renderer, "data/BackGround/background2.png");
     TTF_Font* font = TTF_OpenFont("data/Font/pixel-operator-bold.ttf", 28);
     if (!font) {
         std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
@@ -144,76 +14,179 @@ int main(int argc, char* argv[]) {
     SDL_Texture* runTexture = IMG_LoadTexture(renderer, "data/Pink/Run (32x32).png");
     SDL_Texture* jumpTexture = IMG_LoadTexture(renderer, "data/Pink/Jump.png");
     SDL_Texture* fallTexture = IMG_LoadTexture(renderer, "data/Pink/Fall.png");
-    if (!idleTexture || !runTexture || !jumpTexture || !fallTexture) {
+    SDL_Texture* mapTexture = IMG_LoadTexture(renderer, "data/Map/map.png");
+    SDL_Texture* backgroundTexture = IMG_LoadTexture(renderer, "data/Background/background2.1.png");
+    SDL_Surface* heartFullSurface = IMG_Load("data/redHeart.png");
+    SDL_Texture* heartFullTexture = SDL_CreateTextureFromSurface(renderer, heartFullSurface);
+    SDL_Texture* heartEmptyTexture = IMG_LoadTexture(renderer, "data/blackHeart.png");
+    if (!idleTexture || !runTexture || !jumpTexture || !fallTexture || !backgroundTexture || !mapTexture || !heartFullTexture || !heartEmptyTexture) {
         std::cerr << "Failed to load character image! SDL_image Error: " << IMG_GetError() << std::endl;
     }
+
+    adjustDifficulty();
 
     GameState gameState = MENU;
     int selectedOption = 0;
     int settingsOption = 0;
     int pausedOption = 0;
-    Square square = {750, 225, 0, 0, 0, 0, 35, false, 0, 0, 0, true, false};
-    const float gravity = 600.0f;
+    int deadOption = 0;
+    Square square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
     const float friction = 0.8f;
     Uint32 lastTime = SDL_GetTicks();
     bool quit = false;
+    bool firstPlayingFrame = true;
+    bool isDead = false;
+    bool jumpStarted = false;
     SDL_Event e;
     
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) quit = true;
-            if (gameState == MENU && e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_UP) selectedOption = (selectedOption + 2) % 3;
-                if (e.key.keysym.sym == SDLK_DOWN) selectedOption = (selectedOption + 1) % 3;
-                if (e.key.keysym.sym == SDLK_RETURN) {
-                    if (selectedOption == 0) gameState = PLAYING;
-                    else if (selectedOption == 1) gameState = SETTINGS;
-                    else quit = true;
-                }
-            }
-            else if (gameState == SETTINGS && e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_UP && settingsOption > 0) settingsOption--;
-                if (e.key.keysym.sym == SDLK_DOWN && settingsOption < 3) settingsOption++;
-                if (e.key.keysym.sym == SDLK_RETURN) {
-                    if (settingsOption == 0) difficulty = EASY;
-                    else if (settingsOption == 1) difficulty = MEDIUM;
-                    else if (settingsOption == 2) difficulty = HARD;
-                    else if (settingsOption == 3) gameState = MENU;
-                    adjustDifficulty();
-                }
-            }
-            else if (gameState == PLAYING && e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_p) gameState = PAUSED;
-            }
-            else if (gameState == PAUSED && e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_UP || e.key.keysym.sym == SDLK_DOWN) pausedOption = (pausedOption + 1) % 2;
-                if (e.key.keysym.sym == SDLK_RETURN) {
-                    if (pausedOption == 0) gameState = PLAYING;
-                    else quit = true;
+            if (e.type == SDL_KEYDOWN) {
+                switch (gameState) {
+                    case MENU:
+                        if (e.key.keysym.sym == SDLK_UP) selectedOption = (selectedOption + 2) % 3;
+                        if (e.key.keysym.sym == SDLK_DOWN) selectedOption = (selectedOption + 1) % 3;
+                        if (e.key.keysym.sym == SDLK_RETURN) {
+                            if (selectedOption == 0) {
+                                gameState = PLAYING;
+                                firstPlayingFrame = true;
+                                isDead = false;
+                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false};
+                                int startRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
+                                int startCol = static_cast<int>(square.x) / TILE_SIZE;
+                                if (startRow >= 0 && startRow < 20 && startCol >= 0 && startCol < 40) {
+                                    if (matrix[startRow][startCol] != 1) {
+                                        for (int row = startRow; row < 20; row++) {
+                                            if (matrix[row][startCol] == 1) {
+                                                square.y = row * TILE_SIZE - square.size;
+                                                break;
+                                            }
+                                        }
+                                        if (square.y + square.size > 640) {
+                                            square.y = 400;
+                                            square.vy = 0;
+                                        }
+                                    } else {
+                                        square.vy = 0;
+                                    }
+                                } else {
+                                    square.y = 400;
+                                    square.vy = 0;
+                                }
+                                std::cout << "Starting position: x=" << square.x << ", y=" << square.y << ", vy=" << square.vy << std::endl;
+                            } else if (selectedOption == 1) {
+                                gameState = SETTINGS;
+                            } else {
+                                quit = true;
+                            }
+                        }
+                        break;
+                    case SETTINGS:
+                        if (e.key.keysym.sym == SDLK_UP && settingsOption > 0) settingsOption--;
+                        if (e.key.keysym.sym == SDLK_DOWN && settingsOption < 3) settingsOption++;
+                        if (e.key.keysym.sym == SDLK_RETURN) {
+                            if (settingsOption == 0) {
+                                difficulty = EASY;
+                                adjustDifficulty();
+                                gameState = MENU;
+                            } else if (settingsOption == 1) {
+                                difficulty = MEDIUM;
+                                adjustDifficulty();
+                                gameState = MENU;
+                            } else if (settingsOption == 2) {
+                                difficulty = HARD;
+                                adjustDifficulty();
+                                gameState = MENU;
+                            } else if (settingsOption == 3) {
+                                gameState = MENU;
+                            }
+                        }
+                        break;
+                    case PLAYING:
+                        if (e.key.keysym.sym == SDLK_p) gameState = PAUSED;
+                        break;
+                    case PAUSED:
+                        if (e.key.keysym.sym == SDLK_UP) pausedOption = (pausedOption + 2) % 3;
+                        if (e.key.keysym.sym == SDLK_DOWN) pausedOption = (pausedOption + 1) % 3;
+                        if (e.key.keysym.sym == SDLK_RETURN) {
+                            if (pausedOption == 0) gameState = PLAYING;
+                            else if (pausedOption == 1) quit = true;
+                            else if (pausedOption == 2) {
+                                gameState = MENU;
+                                pausedOption = 0;
+                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
+                                isDead = false;
+                            }
+                        }
+                        break;
+                    case DEAD:
+                        if (e.key.keysym.sym == SDLK_UP) deadOption = (deadOption + 2) % 3;
+                        if (e.key.keysym.sym == SDLK_DOWN) deadOption = (deadOption + 1) % 3;
+                        if (e.key.keysym.sym == SDLK_RETURN) {
+                            if (deadOption == 0) {
+                                gameState = PLAYING;
+                                firstPlayingFrame = true;
+                                isDead = false;
+                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, square.lives, square.livesLost};
+                                int startRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
+                                int startCol = static_cast<int>(square.x) / TILE_SIZE;
+                                if (startRow >= 0 && startRow < 20 && startCol >= 0 && startCol < 40) {
+                                    if (matrix[startRow][startCol] != 1) {
+                                        for (int row = startRow; row < 20; row++) {
+                                            if (matrix[row][startCol] == 1) {
+                                                square.y = row * TILE_SIZE - square.size;
+                                                break;
+                                            }
+                                        }
+                                        if (square.y + square.size > 640 || square.y == 600) {
+                                            square.y = 600;
+                                            square.vy = 0;
+                                        }
+                                    } else {
+                                        square.vy = 0;
+                                    }
+                                }
+                                std::cout << "Restarted at: x=" << square.x << ", y=" << square.y << std::endl;
+                            } else if (deadOption == 1) {
+                                quit = true;
+                            } else if (deadOption == 2) {
+                                gameState = MENU;
+                                deadOption = 0;
+                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
+                                isDead = false;
+                            }
+                        }
+                        break;
                 }
             }
         }
-        if (gameState == MENU) renderMenu(renderer, selectedOption, font);
-        else if (gameState == SETTINGS) renderSettings(renderer, settingsOption, font);
-        else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font);
+        if (gameState == MENU) renderMenu(renderer, selectedOption, font, backgroundTexture);
+        else if (gameState == SETTINGS) renderSettings(renderer, settingsOption, font, backgroundTexture);
+        else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font, backgroundTexture);
+        else if (gameState == DEAD) renderDead(renderer, deadOption, font, backgroundTexture);
         else if (gameState == PLAYING) {
+            if (firstPlayingFrame) {
+                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false};
+                lastTime = SDL_GetTicks();
+                firstPlayingFrame = false;
+                std::cout << "Entered PLAYING state. Gravity: " << gravity << std::endl;
+            }
             Uint32 currentTime = SDL_GetTicks();
             float deltaTime = (currentTime - lastTime) / 1000.0f;
+            if (deltaTime > 0.1f) deltaTime = 0.1f;
             lastTime = currentTime;
             
-            handleInput(square);
-
-            generatePlatforms();
-            updatePlatforms();
-            renderBackground(renderer);
-            renderPlatforms(renderer);
+            handleInput(square, jumpStarted);
 
             square.vx += square.ax * deltaTime;
             square.vy += gravity * deltaTime;
 
+
             if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
             if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
             if (square.vy > MAX_VELOCITY) square.vy = MAX_VELOCITY;
+            if (square.vy < -MAX_VELOCITY) square.vy = -MAX_VELOCITY;
 
             if (square.ax == 0) {
                 float deceleration = ACCELERATION * deltaTime;
@@ -226,13 +199,64 @@ int main(int argc, char* argv[]) {
                 }
             }
 
-            square.x += square.vx * deltaTime;
-            square.y += square.vy * deltaTime;
+            float nextX = square.x + square.vx * deltaTime;
+            float nextY = square.y + square.vy * deltaTime;
 
-            if (square.y + square.size > 580) {
-                square.y = 580 - square.size;
-                square.vy = 0;
-                square.isJumping = false;
+            int currentCol = static_cast<int>(square.x) / TILE_SIZE;
+            int currentRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
+            int nextCol = static_cast<int>(nextX) / TILE_SIZE;
+            int nextRow = static_cast<int>(nextY + square.size) / TILE_SIZE;
+
+            bool collisionX = false;
+            bool collisionY = false;
+
+            if (nextCol >= 0 && nextCol < 40 && nextRow >= 0 && nextRow < 20) {
+                if (matrix[nextRow][nextCol] == 1 || matrix[nextRow][nextCol + 1] == 1) {
+                    if (square.vx > 0 && nextX + square.size > nextCol * TILE_SIZE) {
+                        nextX = nextCol * TILE_SIZE - square.size;
+                        collisionX = true;
+                    } else if (square.vx < 0 && nextX < (nextCol + 1) * TILE_SIZE) {
+                        nextX = (nextCol + 1) * TILE_SIZE;
+                        collisionX = true;
+                    }
+                }
+            }
+
+            if (nextRow >= 0 && nextRow < 20 && nextCol >= 0 && nextCol < 40) {
+                if (matrix[nextRow][nextCol] == 1) {
+                    if (square.vy >= 0 && nextY + square.size > nextRow * TILE_SIZE) {
+                        nextY = nextRow * TILE_SIZE - square.size;
+                        square.vy = 0;
+                        square.isJumping = false;
+                        square.jumpKeyHeld = false;
+                        square.initialJumpY = 0;
+                        collisionY = true;
+                    } else if (square.vy < 0 && nextY < (nextRow + 1) * TILE_SIZE) {
+                        nextY = (nextRow + 1) * TILE_SIZE;
+                        square.vy = 0;
+                        collisionY = true;
+                    }
+                }
+            }
+
+            square.x = nextX;
+            square.y = nextY;
+
+            if (square.x < -square.size || square.x > 1280 || square.y < -square.size || square.y > 640) {
+                square.lives -= 1;
+                square.livesLost += 1;
+                std::cout << "Died: x=" << square.x << ", y=" << square.y << ", vy=" << square.vy << ", Lives: " << square.lives << ", Lives Lost: " << square.livesLost << std::endl;
+
+                if (square.lives > 0) {
+                    gameState = DEAD;
+                    isDead = true;
+                    deadOption = 0;
+                } else {
+                    gameState = MENU;
+                    square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
+                    isDead = false;
+                    std::cout << "Game Over: No lives left!" << std::endl;
+                }
             }
 
             if (currentTime - square.lastFrameTime > FRAME_DELAY) {
@@ -245,18 +269,23 @@ int main(int argc, char* argv[]) {
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
             SDL_RenderClear(renderer);
 
+            SDL_Rect backgroundRect = {0, 0, 1280, 640};
+            SDL_RenderCopy(renderer, mapTexture, NULL, &backgroundRect);
+
             SDL_Texture* currentTexture = square.isMoving ? runTexture : idleTexture;
-            SDL_Texture* jumpFallTexture = square.vy < 0 ? jumpTexture : fallTexture;
-            if (square.isJumping || square.vy < 0) {
+            SDL_Texture* jumpFallTexture = square.vy < 0 ? jumpTexture : (square.vy > 0 ? fallTexture : idleTexture);
+            if (square.isJumping || square.vy != 0) {
                 SDL_Rect srcRect = {0, 0, 32, 32};
-                SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 50, 50};
+                SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
                 SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
                 SDL_RenderCopyEx(renderer, jumpFallTexture, &srcRect, &destRect, 0, NULL, flip);
             }
             SDL_Rect srcRect = {square.currentFrameX * 32, 0, 32, 32};
-            SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 50, 50};
+            SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
             SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
             SDL_RenderCopyEx(renderer, currentTexture, &srcRect, &destRect, 0, NULL, flip);
+
+            renderHearts(renderer, heartFullTexture, heartEmptyTexture, square);
             
             SDL_RenderPresent(renderer);
         }
@@ -269,6 +298,10 @@ int main(int argc, char* argv[]) {
     SDL_DestroyTexture(runTexture);
     SDL_DestroyTexture(jumpTexture);
     SDL_DestroyTexture(fallTexture);
+    SDL_DestroyTexture(backgroundTexture);
+    SDL_DestroyTexture(mapTexture);
+    SDL_DestroyTexture(heartFullTexture);
+    SDL_DestroyTexture(heartEmptyTexture);
     SDL_DestroyWindow(window);
     SDL_Quit();
     
