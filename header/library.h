@@ -7,10 +7,13 @@
 #include <SDL2/SDL_mixer.h>
 #include <iostream>
 #include <vector>
+#include <cstdlib>
+#include <ctime>
 #include "map1.h"
 #include "character.h"
 #include "menu.h"
 #include "var.h"
 #include "handleinput.h"
+#include "map1.cpp"
 
 #endif

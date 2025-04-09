@@ -6,10 +6,14 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_image.h>
+#include <sstream>
+#include <vector>
+#include <algorithm>
+#include <string>
 #include "var.h"
 #include "character.h"
 
-enum GameState { MENU, SETTINGS, PLAYING, PAUSED, DEAD, EXIT };
+enum GameState { MENU, SETTINGS, HIGHSCORE, PLAYING, PAUSED, DEAD, EXIT };
 
 enum Difficulty { EASY, MEDIUM, HARD };
 
@@ -26,7 +30,7 @@ void adjustDifficulty() {
 }
 
 void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font, SDL_Texture* backgroundTexture) {
-    const char* menu[] = {"Start", "Settings", "Exit"};
+    const char* menu[] = {"Start", "Settings","HighScore", "Exit"};
 
     SDL_RenderClear(renderer);
 
@@ -39,11 +43,11 @@ void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font, SDL_Textur
     SDL_Texture* textTexture;
     SDL_Rect textRect;
 
-    for (int i = 0; i < 3; i++){
+    for (int i = 0; i < 4; i++){
         SDL_Color color = (selected == i) ? yellow : white;
         textSurface = TTF_RenderText_Solid(font, menu[i], color);
         textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-        textRect = {550, (i+2) * 100, textSurface->w, textSurface->h};
+        textRect = {550, (i + 2) * 100, textSurface->w, textSurface->h};
         SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
         SDL_FreeSurface(textSurface);
         SDL_DestroyTexture(textTexture);
@@ -150,22 +154,64 @@ void renderDead(SDL_Renderer* renderer, int selected, TTF_Font* font, SDL_Textur
     SDL_RenderPresent(renderer);
 }
 
-void renderHearts(SDL_Renderer* renderer, SDL_Texture* heartFullTexture, SDL_Texture* heartEmptyTexture, const Square &square) {
-    SDL_Rect heartRect = {10, 10, HEART_SIZE, HEART_SIZE};
-    SDL_Rect srcRect = {0, 0, HEART_SIZE, HEART_SIZE};
+void renderHearts(SDL_Renderer* renderer, int lives) {
 
-    for (int i = 0; i < square.lives; i++) {
-        SDL_RenderCopy(renderer, heartFullTexture, &srcRect, &heartRect);
-        heartRect.x += HEART_SIZE + 5;
+    const int heartWidth = 30;
+    const int heartHeight = 20;
+    const int spacing = 10;
+
+    int startX = 20;
+    int startY = 20;
+
+    for (int i = 0; i < 3; ++i) {
+        SDL_Rect heartRect = {
+            startX + i * (heartWidth + spacing),
+            startY,
+            heartWidth,
+            heartHeight
+        };
+
+        if (i < lives) {
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        } else {
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            SDL_RenderDrawRect(renderer, &heartRect);
+            continue;
+        }
+
+        SDL_RenderFillRect(renderer, &heartRect);
     }
+}
 
-    heartRect.x = 10;
-    heartRect.y += HEART_SIZE + 5;
+std::vector<Uint32> highscores;
 
-    for (int i = 0; i < square.livesLost; i++) {
-        SDL_RenderCopy(renderer, heartEmptyTexture, &srcRect, &heartRect);
-        heartRect.x += HEART_SIZE + 5;
+void saveHighscore(Uint32 time) {
+    highscores.push_back(time);
+    std::sort(highscores.begin(), highscores.end(), std::greater<>());
+    if (highscores.size() > 3) highscores.resize(3);
+}
+
+void renderHighscores(SDL_Renderer* renderer, TTF_Font* font, const std::vector<Uint32>& scores) {
+    SDL_Color white = {255, 255, 255, 255};
+    int y = 60;
+    for (size_t i = 0; i < scores.size(); ++i) {
+        std::stringstream ss;
+        ss << i + 1 << ". " << scores[i] / 1000 << "s";
+        SDL_Surface* surface = TTF_RenderText_Solid(font, ss.str().c_str(), white);
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_Rect dstRect = {20, y, surface->w, surface->h};
+        SDL_RenderCopy(renderer, texture, NULL, &dstRect);
+        SDL_FreeSurface(surface);
+        SDL_DestroyTexture(texture);
+        y += 30;
     }
+    std::string returnText = "Press ESC to return";
+    SDL_Surface* surface = TTF_RenderText_Solid(font, returnText.c_str(), white);
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_Rect returnRect = {20, y + 20, surface->w, surface->h};
+    SDL_RenderCopy(renderer, texture, NULL, &returnRect);
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
 }
 
 #endif

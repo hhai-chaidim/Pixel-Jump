@@ -20,6 +20,12 @@ struct Square {
     bool jumpKeyHeld;
     int lives;
     int livesLost;
+    int w, h;
+};
+
+
+struct Enemy {
+
 };
 
 #endif

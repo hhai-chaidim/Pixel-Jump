@@ -6,21 +6,43 @@
 #include "var.h"
 #include "character.h"
 
-void handleInput(Square &square, bool &jumpStarted) {
+inline void handleInput(Square &square, bool &jumpStarted) {
     const Uint8* state = SDL_GetKeyboardState(NULL);
     square.isMoving = false;
+
 
     if (state[SDL_SCANCODE_LEFT]) {
         square.ax = -ACCELERATION;
         square.facing = false;
         square.isMoving = true;
-    } else if (state[SDL_SCANCODE_RIGHT]) {
+    } 
+
+    else if (state[SDL_SCANCODE_RIGHT]) {
         square.ax = ACCELERATION;
         square.facing = true;
         square.isMoving = true;
-    } else {
-        square.ax = 0;
+    } 
+
+    else {
+        if (square.vx > 0) {
+            square.ax = -FRICTION;
+            if (square.vx < FRICTION) {
+                square.vx = 0;
+                square.ax = 0;
+            }
+        } else if (square.vx < 0) {
+            square.ax = FRICTION;
+            if (square.vx > -FRICTION) {
+                square.vx = 0;
+                square.ax = 0;
+            }
+        } else {
+            square.ax = 0;
+        }
     }
+
+    if (square.vx > MAX_SPEED) square.vx = MAX_SPEED;
+    if (square.vx < -MAX_SPEED) square.vx = -MAX_SPEED;
 
     if (state[SDL_SCANCODE_UP]) {
         if (!square.isJumping && !jumpStarted) {
