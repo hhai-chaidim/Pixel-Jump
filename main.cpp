@@ -17,26 +17,28 @@ int main(int argc, char* argv[]) {
     SDL_Texture* fallTexture       = IMG_LoadTexture(renderer, "data/Pink/Fall.png");
     SDL_Texture* backgroundTexture = IMG_LoadTexture(renderer, "data/Background/background2.1.png");
     SDL_Texture* mapTexture        = IMG_LoadTexture(renderer, "data/Map/map.png");
-    if (!idleTexture || !runTexture || !jumpTexture || !fallTexture || !backgroundTexture || !mapTexture) {
+    SDL_Texture* enemyTexture        = IMG_LoadTexture(renderer, "data/Pink/bắn.png");
+    if (!idleTexture || !runTexture || !jumpTexture || !fallTexture || !backgroundTexture || !mapTexture || !enemyTexture) {
         std::cerr << "Failed to load character image! SDL_image Error: " << IMG_GetError() << std::endl;
     }
 
     adjustDifficulty();
 
-    GameState gameState    = MENU;
-    int selectedOption     = 0;
-    int settingsOption     = 0;
-    int pausedOption       = 0;
-    int deadOption         = 0;
-    Square square          = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
-    const float friction   = 0.8f;
-    Uint32 lastTime        = SDL_GetTicks();
-    Uint32 gameStartTime   = 0;
-    Uint32 survivalTime    = 0;
-    bool quit              = false;
-    bool firstPlayingFrame = true;
-    bool isDead            = false;
-    bool jumpStarted       = false;
+    GameState gameState       = MENU;
+    int selectedOption        = 0;
+    int settingsOption        = 0;
+    int pausedOption          = 0;
+    int deadOption            = 0;
+    Square square             = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
+    const float friction      = 0.8f;
+    Uint32 lastTime           = SDL_GetTicks();
+    Uint32 gameStartTime      = 0;
+    Uint32 survivalTime       = 0;
+    Uint32 lastEnemySpawnTime = 0;
+    bool quit                 = false;
+    bool firstPlayingFrame    = true;
+    bool isDead               = false;
+    bool jumpStarted          = false;
     SDL_Event e;
     
     while (!quit) {
@@ -180,6 +182,13 @@ int main(int argc, char* argv[]) {
             lastTime = currentTime;
             
             handleInput(square, jumpStarted);
+
+            if (currentTime - lastEnemySpawnTime > 1000) {
+                spawnEnemy();
+                lastEnemySpawnTime = currentTime;
+            }
+
+            updateEnemies(enemies, square);
             
             square.vx += square.ax * deltaTime;
             square.vy += gravity * deltaTime;
@@ -296,6 +305,7 @@ int main(int argc, char* argv[]) {
             SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
             SDL_RenderCopyEx(renderer, currentTexture, &srcRect, &destRect, 0, NULL, flip);
 
+            renderEnemies(renderer, enemies, enemyTexture);
             renderHearts(renderer, square.lives);
             
             SDL_RenderPresent(renderer);
@@ -311,6 +321,7 @@ int main(int argc, char* argv[]) {
     SDL_DestroyTexture(fallTexture);
     SDL_DestroyTexture(backgroundTexture);
     SDL_DestroyTexture(mapTexture);
+    SDL_DestroyTexture(enemyTexture);
     SDL_DestroyWindow(window);
     SDL_Quit();
     

@@ -21,11 +21,11 @@ struct Square {
     int lives;
     int livesLost;
     int w, h;
+    bool isDead;
 };
 
-
 struct Enemy {
-
+    float x, y, vx, vy, radius;
 };
 
 #endif

@@ -3,6 +3,8 @@
 
 #include <SDL2/SDL.h>
 #include <iostream>
+#include <vector>
+#include <algorithm>
 #include "var.h"
 #include "character.h"
 
@@ -58,6 +60,39 @@ inline void handleInput(Square &square, bool &jumpStarted) {
     } else {
         square.jumpKeyHeld = false;
         jumpStarted = false;
+    }
+}
+std::vector<Enemy> enemies;
+
+void spawnEnemy() {
+    Enemy e;
+    e.x = rand() % 800;
+    e.y = 0;
+    e.vx = 0;
+    e.vy = 2 + rand() % 3;
+    e.radius = 10;
+    enemies.push_back(e);
+}
+
+void updateEnemies(std::vector<Enemy>& enemies, Square& square) {
+    for (auto& e : enemies) {
+        e.y += e.vy;
+
+        float dx = (square.x + square.w / 2) - e.x;
+        float dy = (square.y + square.h / 2) - e.y;
+        float distSq = dx * dx + dy * dy;
+        float combinedRadius = e.radius + std::min(square.w, square.h) / 2;
+
+        if (distSq < combinedRadius * combinedRadius) {
+            square.isDead = true;
+        }
+    }
+}
+
+void renderEnemies(SDL_Renderer* renderer, const std::vector<Enemy>& enemies, SDL_Texture* enemyTexture) {
+    for (const auto& e : enemies) {
+        SDL_Rect rect = {(int)(e.x - e.radius), (int)(e.y - e.radius), (int)(2 * e.radius), (int)(2 * e.radius)};
+        SDL_RenderFillRect(renderer, &rect);
     }
 }
 
