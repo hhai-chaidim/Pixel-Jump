@@ -8,7 +8,6 @@
 struct Square {
     float x, y;
     float vx, vy;
-    float ax, ay;
     float size;
     bool isJumping;
     int currentFrameX;
@@ -22,10 +21,18 @@ struct Square {
     int livesLost;
     int w, h;
     bool isDead;
+    bool isHit;
 };
 
 struct Enemy {
     float x, y, vx, vy, radius;
+    int w, h;
+    bool alive;
+};
+
+struct Bullet {
+    float x, y, vx, vy;
+    bool active;
 };
 
 #endif

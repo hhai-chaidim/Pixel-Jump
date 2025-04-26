@@ -9,11 +9,14 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
+#include <algorithm>
 #include "map1.h"
 #include "character.h"
 #include "menu.h"
 #include "var.h"
 #include "handleinput.h"
 #include "map1.cpp"
+#include "func.h"
 
 #endif

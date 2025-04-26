@@ -6,6 +6,7 @@ int main(int argc, char* argv[]) {
     TTF_Init();
     
     SDL_Window* window     = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 640, SDL_WINDOW_SHOWN);
+    SDL_ShowCursor(SDL_DISABLE);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     TTF_Font* font         = TTF_OpenFont("data/Font/pixel-operator-bold.ttf", 28);
     if (!font) {
@@ -15,21 +16,25 @@ int main(int argc, char* argv[]) {
     SDL_Texture* runTexture        = IMG_LoadTexture(renderer, "data/Pink/Run (32x32).png");
     SDL_Texture* jumpTexture       = IMG_LoadTexture(renderer, "data/Pink/Jump.png");
     SDL_Texture* fallTexture       = IMG_LoadTexture(renderer, "data/Pink/Fall.png");
+    SDL_Texture* hitTexture        = IMG_LoadTexture(renderer, "data/Pink/Hit (32x32).png");
     SDL_Texture* backgroundTexture = IMG_LoadTexture(renderer, "data/Background/background2.1.png");
     SDL_Texture* mapTexture        = IMG_LoadTexture(renderer, "data/Map/map.png");
-    SDL_Texture* enemyTexture        = IMG_LoadTexture(renderer, "data/Pink/bắn.png");
+    SDL_Surface* enemySurface      = IMG_Load("data/Pink/enemy.png");
+    SDL_Texture* enemyTexture      = SDL_CreateTextureFromSurface(renderer, enemySurface);
+    SDL_FreeSurface(enemySurface);
     if (!idleTexture || !runTexture || !jumpTexture || !fallTexture || !backgroundTexture || !mapTexture || !enemyTexture) {
         std::cerr << "Failed to load character image! SDL_image Error: " << IMG_GetError() << std::endl;
     }
 
     adjustDifficulty();
+    std::vector<Bullet> bullets;
 
     GameState gameState       = MENU;
     int selectedOption        = 0;
     int settingsOption        = 0;
     int pausedOption          = 0;
     int deadOption            = 0;
-    Square square             = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
+    Square square             = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
     const float friction      = 0.8f;
     Uint32 lastTime           = SDL_GetTicks();
     Uint32 gameStartTime      = 0;
@@ -39,6 +44,7 @@ int main(int argc, char* argv[]) {
     bool firstPlayingFrame    = true;
     bool isDead               = false;
     bool jumpStarted          = false;
+    std::vector<Enemy> enemies;
     SDL_Event e;
     
     while (!quit) {
@@ -47,14 +53,14 @@ int main(int argc, char* argv[]) {
             if (e.type == SDL_KEYDOWN) {
                 switch (gameState) {
                     case MENU:
-                        if (e.key.keysym.sym == SDLK_UP) selectedOption = (selectedOption + 2) % 3;
-                        if (e.key.keysym.sym == SDLK_DOWN) selectedOption = (selectedOption + 1) % 3;
+                        if (e.key.keysym.sym == SDLK_UP) selectedOption = (selectedOption + 3) % 4;
+                        if (e.key.keysym.sym == SDLK_DOWN) selectedOption = (selectedOption + 1) % 4;
                         if (e.key.keysym.sym == SDLK_RETURN) {
                             if (selectedOption == 0) {
                                 gameState = PLAYING;
                                 firstPlayingFrame = true;
                                 isDead = false;
-                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
+                                square = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
                                 int startRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
                                 int startCol = static_cast<int>(square.x) / TILE_SIZE;
                                 if (startRow >= 0 && startRow < 20 && startCol >= 0 && startCol < 40) {
@@ -79,7 +85,10 @@ int main(int argc, char* argv[]) {
                                 std::cout << "Starting position: x=" << square.x << ", y=" << square.y << ", vy=" << square.vy << std::endl;
                             } else if (selectedOption == 1) {
                                 gameState = SETTINGS;
-                            } else {
+                            } else if (selectedOption == 2) {
+                                gameState = HIGHSCORE;
+                            }
+                            else {
                                 quit = true;
                             }
                         }
@@ -115,10 +124,10 @@ int main(int argc, char* argv[]) {
                             if (pausedOption == 0) gameState = PLAYING;
                             else if (pausedOption == 1) quit = true;
                             else if (pausedOption == 2) {
-                                gameState = MENU;
+                                gameState    = MENU;
                                 pausedOption = 0;
-                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
-                                isDead = false;
+                                square       = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
+                                isDead       = false;
                             }
                         }
                         break;
@@ -127,36 +136,30 @@ int main(int argc, char* argv[]) {
                         if (e.key.keysym.sym == SDLK_DOWN) deadOption = (deadOption + 1) % 3;
                         if (e.key.keysym.sym == SDLK_RETURN) {
                             if (deadOption == 0) {
-                                gameState = PLAYING;
+                                gameState         = PLAYING;
                                 firstPlayingFrame = true;
-                                isDead = false;
-                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, square.lives, square.livesLost};
-                                int startRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
-                                int startCol = static_cast<int>(square.x) / TILE_SIZE;
-                                if (startRow >= 0 && startRow < 20 && startCol >= 0 && startCol < 40) {
-                                    if (matrix[startRow][startCol] != 1) {
-                                        for (int row = startRow; row < 20; row++) {
-                                            if (matrix[row][startCol] == 1) {
-                                                square.y = row * TILE_SIZE - square.size;
-                                                break;
-                                            }
-                                        }
-                                        if (square.y + square.size > 640 || square.y == 600) {
-                                            square.y = 600;
-                                            square.vy = 0;
-                                        }
+                                isDead            = false;
+                                square            = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, square.lives, 0, 32, 32, false, false};
+                                int tileBelowRow  = static_cast<int>((square.y + square.size + 1) / TILE_SIZE);
+                                int tileCol       = static_cast<int>(square.x / TILE_SIZE);
+
+                                if (tileBelowRow >= 0 && tileBelowRow < 20 && tileCol >= 0 && tileCol < 40) {
+                                    if (matrix[tileBelowRow][tileCol] != 1) {
                                     } else {
-                                        square.vy = 0;
+                                        square.vy          = 0;
+                                        square.isJumping   = false;
+                                        square.jumpKeyHeld = false;
+                                        square.y           = tileBelowRow * TILE_SIZE - square.size;
                                     }
                                 }
                                 std::cout << "Restarted at: x=" << square.x << ", y=" << square.y << std::endl;
                             } else if (deadOption == 1) {
                                 quit = true;
                             } else if (deadOption == 2) {
-                                gameState = MENU;
+                                gameState  = MENU;
                                 deadOption = 0;
-                                square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
-                                isDead = false;
+                                square     = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
+                                isDead     = false;
                             }
                         }
                         break;
@@ -165,63 +168,54 @@ int main(int argc, char* argv[]) {
         }
         if (gameState == MENU) renderMenu(renderer, selectedOption, font, backgroundTexture);
         else if (gameState == SETTINGS) renderSettings(renderer, settingsOption, font, backgroundTexture);
-        else if (gameState == HIGHSCORE) renderHighscores(renderer, font, highscores);
         else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font, backgroundTexture);
         else if (gameState == DEAD) renderDead(renderer, deadOption, font, backgroundTexture);
         else if (gameState == PLAYING) {
             if (firstPlayingFrame) {
-                square = {500, 200, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, square.lives, square.livesLost};
-                lastTime = SDL_GetTicks();
+                square            = {544, 128, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, square.lives, 0, 32, 32, false, false};
+                lastTime          = SDL_GetTicks();
                 firstPlayingFrame = false;
                 std::cout << "Entered PLAYING state. Gravity: " << gravity << std::endl;
             }
             
             Uint32 currentTime = SDL_GetTicks();
+            int mouseX, mouseY;
+            SDL_GetMouseState(&mouseX, &mouseY);
+
+            handleInput(square, bullets, renderer, quit, jumpStarted);
             float deltaTime = (currentTime - lastTime) / 1000.0f;
             if (deltaTime > 0.1f) deltaTime = 0.1f;
             lastTime = currentTime;
-            
-            handleInput(square, jumpStarted);
 
             if (currentTime - lastEnemySpawnTime > 1000) {
-                spawnEnemy();
+                spawnEnemy(enemies);
                 lastEnemySpawnTime = currentTime;
             }
 
-            updateEnemies(enemies, square);
-            
-            square.vx += square.ax * deltaTime;
+            updateEnemies(enemies, square, 1280, 640);
+            checkBulletEnemyCollisions(bullets, enemies);
+        
             square.vy += gravity * deltaTime;
             
-            if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
+            if (square.vx > MAX_VELOCITY) square.vx  = MAX_VELOCITY;
             if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
-            if (square.vy > MAX_VELOCITY) square.vy = MAX_VELOCITY;
+            if (square.vy > MAX_VELOCITY) square.vy  = MAX_VELOCITY;
             if (square.vy < -MAX_VELOCITY) square.vy = -MAX_VELOCITY;
-            
-            if (square.ax == 0) {
-                float deceleration = ACCELERATION * deltaTime;
-                if (square.vx > 0) {
-                    square.vx -= deceleration;
-                    if (square.vx < 0) square.vx = 0;
-                } else if (square.vx < 0) {
-                    square.vx += deceleration;
-                    if (square.vx > 0) square.vx = 0;
-                }
-            }
+        
             
             float nextX = square.x + square.vx * deltaTime;
             float nextY = square.y + square.vy * deltaTime;
             
             int currentCol = static_cast<int>(square.x) / TILE_SIZE;
-            int currentRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
-            int nextCol = static_cast<int>(nextX) / TILE_SIZE;
-            int nextRow = static_cast<int>(nextY + square.size) / TILE_SIZE;
+            int currentRow = static_cast<int>((square.y + square.size / 2)) / TILE_SIZE;
+            int nextCol    = static_cast<int>(nextX) / TILE_SIZE;
+            int nextRow    = static_cast<int>(nextY + square.size) / TILE_SIZE;
             
             bool collisionX = false;
             bool collisionY = false;
             
-            if (nextCol >= 0 && nextCol < 40 && nextRow >= 0 && nextRow < 20) {
-                if (matrix[nextRow][nextCol] == 1 || matrix[nextRow][nextCol + 1] == 1) {
+            if (nextCol >= 0 && nextCol < 40 && currentRow >= 0 && currentRow < 20) {
+                if (matrix[currentRow][nextCol] == 1) {
                     if (square.vx > 0 && nextX + square.size > nextCol * TILE_SIZE) {
                         nextX = nextCol * TILE_SIZE - square.size;
                         collisionX = true;
@@ -235,15 +229,15 @@ int main(int argc, char* argv[]) {
             if (nextRow >= 0 && nextRow < 20 && nextCol >= 0 && nextCol < 40) {
                 if (matrix[nextRow][nextCol] == 1) {
                     if (square.vy >= 0 && nextY + square.size > nextRow * TILE_SIZE) {
-                        nextY = nextRow * TILE_SIZE - square.size;
-                        square.vy = 0;
-                        square.isJumping = false;
-                        square.jumpKeyHeld = false;
+                        nextY               = nextRow * TILE_SIZE - square.size;
+                        square.vy           = 0;
+                        square.isJumping    = false;
+                        square.jumpKeyHeld  = false;
                         square.initialJumpY = 0;
-                        collisionY = true;
+                        collisionY          = true;
                     } else if (square.vy < 0 && nextY < (nextRow + 1) * TILE_SIZE) {
-                        nextY = (nextRow + 1) * TILE_SIZE;
-                        square.vy = 0;
+                        nextY      = (nextRow + 1) * TILE_SIZE;
+                        square.vy  = 0;
                         collisionY = true;
                     }
                 }
@@ -253,30 +247,29 @@ int main(int argc, char* argv[]) {
             square.y = nextY;
             
             if (square.x < -square.size || square.x > 1280 || square.y < -square.size || square.y > 640) {
-                square.lives -= 1;
+                square.lives     -= 1;
                 square.livesLost += 1;
+                square.isDead     = true;
                 std::cout << "Died: x=" << square.x << ", y=" << square.y << ", vy=" << square.vy << ", Lives: " << square.lives << ", Lives Lost: " << square.livesLost << std::endl;
-            
-                if (square.lives > 0) {
-                    gameState          = PLAYING;
-                    isDead             = true;
-                    deadOption         = 0;
-                    square.x           = rand() % (800 - square.w);
-                    square.y           = rand() % (600 - square.h);
-                    square.vx          = 0;
-                    square.vy          = 0;
-                    square.ax          = 0;
-                    square.ay          = 0;
-                    square.isJumping   = false;
-                    square.jumpKeyHeld = false;
-                } else {
-                    survivalTime = SDL_GetTicks() - gameStartTime;
-                    saveHighscore(survivalTime);
-                    gameState = DEAD;
-                    square = {320, 400, 0, 0, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0};
-                    isDead = false;
-                    std::cout << "Game Over: No lives left!" << std::endl;
-                }
+            }
+            if (square.lives > 0 && square.isDead) {
+                gameState          = PLAYING;
+                deadOption         = 0;
+                square.x           = rand() % (800 - square.w);
+                square.y           = rand() % (600 - square.h);
+                square.vx          = 0;
+                square.vy          = 0;
+                square.isJumping   = false;
+                square.jumpKeyHeld = false;
+                square.isDead      = false;
+            } else if (square.lives <= 0) {
+                survivalTime = SDL_GetTicks() - gameStartTime;
+                gameState = DEAD;
+                square    = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false};
+                isDead    = true;
+                resetEnemies(enemies, 1280, 640);
+                bullets.clear();
+                std::cout << "Game Over: No lives left!" << std::endl;
             }
 
             if (currentTime - square.lastFrameTime > FRAME_DELAY) {
@@ -292,23 +285,33 @@ int main(int argc, char* argv[]) {
             SDL_Rect backgroundRect = {0, 0, 1280, 640};
             SDL_RenderCopy(renderer, mapTexture, NULL, &backgroundRect);
 
-            SDL_Texture* currentTexture = square.isMoving ? runTexture : idleTexture;
+            SDL_Texture* currentTexture  = square.isMoving ? runTexture : idleTexture;
+            if (square.isHit){
+                currentTexture = hitTexture;
+                square.isHit   = false;   
+            }
             SDL_Texture* jumpFallTexture = square.vy < 0 ? jumpTexture : (square.vy > 0 ? fallTexture : idleTexture);
             if (square.isJumping || square.vy != 0) {
-                SDL_Rect srcRect = {0, 0, 32, 32};
-                SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
+                SDL_Rect srcRect      = {0, 0, 32, 32};
+                SDL_Rect destRect     = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
                 SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
                 SDL_RenderCopyEx(renderer, jumpFallTexture, &srcRect, &destRect, 0, NULL, flip);
             }
-            SDL_Rect srcRect = {square.currentFrameX * 32, 0, 32, 32};
-            SDL_Rect destRect = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
+            
+            SDL_Rect srcRect      = {square.currentFrameX * 32, 0, 32, 32};
+            SDL_Rect destRect     = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
             SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
             SDL_RenderCopyEx(renderer, currentTexture, &srcRect, &destRect, 0, NULL, flip);
+            
+            updateAndDrawBullets(renderer, bullets, deltaTime);
 
             renderEnemies(renderer, enemies, enemyTexture);
             renderHearts(renderer, square.lives);
-            
-            SDL_RenderPresent(renderer);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+
+            renderCrosshair(renderer, mouseX, mouseY);
+
+            SDL_Delay(16);
         }
     };
     

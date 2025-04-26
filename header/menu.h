@@ -10,6 +10,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <fstream>
 #include "var.h"
 #include "character.h"
 
@@ -23,8 +24,8 @@ float gravity;
 void adjustDifficulty() {
     switch (difficulty) {
         case EASY: gravity = 120.0f; break;
-        case MEDIUM: gravity = 190.0f; break;
-        case HARD: gravity = 300.0f; break;
+        case MEDIUM: gravity = 240.0f; break;
+        case HARD: gravity = 320.0f; break;
     }
     std::cout << "Difficulty set to: " << (difficulty == EASY ? "EASY" : difficulty == MEDIUM ? "MEDIUM" : "HARD") << ", Gravity: " << gravity << std::endl;
 }
@@ -183,35 +184,5 @@ void renderHearts(SDL_Renderer* renderer, int lives) {
     }
 }
 
-std::vector<Uint32> highscores;
-
-void saveHighscore(Uint32 time) {
-    highscores.push_back(time);
-    std::sort(highscores.begin(), highscores.end(), std::greater<>());
-    if (highscores.size() > 3) highscores.resize(3);
-}
-
-void renderHighscores(SDL_Renderer* renderer, TTF_Font* font, const std::vector<Uint32>& scores) {
-    SDL_Color white = {255, 255, 255, 255};
-    int y = 60;
-    for (size_t i = 0; i < scores.size(); ++i) {
-        std::stringstream ss;
-        ss << i + 1 << ". " << scores[i] / 1000 << "s";
-        SDL_Surface* surface = TTF_RenderText_Solid(font, ss.str().c_str(), white);
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_Rect dstRect = {20, y, surface->w, surface->h};
-        SDL_RenderCopy(renderer, texture, NULL, &dstRect);
-        SDL_FreeSurface(surface);
-        SDL_DestroyTexture(texture);
-        y += 30;
-    }
-    std::string returnText = "Press ESC to return";
-    SDL_Surface* surface = TTF_RenderText_Solid(font, returnText.c_str(), white);
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_Rect returnRect = {20, y + 20, surface->w, surface->h};
-    SDL_RenderCopy(renderer, texture, NULL, &returnRect);
-    SDL_FreeSurface(surface);
-    SDL_DestroyTexture(texture);
-}
 
 #endif
