@@ -89,7 +89,6 @@ void shootBullet(SDL_Renderer* renderer, const Square& square, std::vector<Bulle
     bullets.push_back(bullet);
 }
 
-// Hàm cập nhật và vẽ đạn
 void updateAndDrawBullets(SDL_Renderer* renderer, std::vector<Bullet>& bullets, float deltaTime) {
     SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
     for (auto& bullet : bullets) {
@@ -113,7 +112,6 @@ void updateAndDrawBullets(SDL_Renderer* renderer, std::vector<Bullet>& bullets, 
     );
 }
 
-// Hàm kiểm tra va chạm giữa đạn và địch
 int checkBulletEnemyCollisions(std::vector<Bullet>& bullets, std::vector<Enemy>& enemies) {
     int enemiesKilled = 0;
     bool debug = true;
@@ -155,7 +153,6 @@ int checkBulletEnemyCollisions(std::vector<Bullet>& bullets, std::vector<Enemy>&
     return enemiesKilled;
 }
 
-// Hàm tạo địch mới khi tất cả địch bị tiêu diệt
 void spawnEnemiesIfAllDefeated(std::vector<Enemy>& enemies, int numEnemiesToSpawn) {
     if (enemies.empty()) {
         for (int i = 0; i < numEnemiesToSpawn; ++i) {
@@ -174,7 +171,6 @@ void spawnEnemiesIfAllDefeated(std::vector<Enemy>& enemies, int numEnemiesToSpaw
     }
 }
 
-// Hàm vẽ số địch đã tiêu diệt
 void drawKillCount(SDL_Renderer* renderer, TTF_Font* font, int killCount) {
     std::string text = "KIlls " + std::to_string(killCount);
     SDL_Color color = {255, 255, 255, 255};
@@ -221,7 +217,6 @@ int loadHighscore() {
     return highscore;
 }
 
-// Hàm lưu highscore vào file
 void saveHighscore(int highscore) {
     std::ofstream file("highscore.txt");
     if (file.is_open()) {

@@ -188,11 +188,9 @@ void renderHighscore(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* backgr
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
-    // Vẽ nền
     SDL_Rect backgroundRect = {0, 0, 1280, 640};
     SDL_RenderCopy(renderer, backgroundTexture, NULL, &backgroundRect);
 
-    // Vẽ tiêu đề "Highscore"
     SDL_Color color = {255, 255, 255, 255};
     std::string titleText = "Highscore";
     SDL_Surface* titleSurface = TTF_RenderText_Solid(font, titleText.c_str(), color);
@@ -211,7 +209,6 @@ void renderHighscore(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* backgr
     SDL_Rect titleRect = {1280 / 2 - titleW / 2, 200, titleW, titleH};
     SDL_RenderCopy(renderer, titleTexture, nullptr, &titleRect);
 
-    // Vẽ highscore
     std::string highscoreText = "High Score: " + std::to_string(highscore);
     SDL_Surface* highscoreSurface = TTF_RenderText_Solid(font, highscoreText.c_str(), color);
     if (!highscoreSurface) {
@@ -233,7 +230,6 @@ void renderHighscore(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* backgr
     SDL_Rect highscoreRect = {1280 / 2 - highscoreW / 2, 300, highscoreW, highscoreH};
     SDL_RenderCopy(renderer, highscoreTexture, nullptr, &highscoreRect);
 
-    // Vẽ hướng dẫn quay lại menu
     std::string backText = "ENTER to return to menu";
     SDL_Surface* backSurface = TTF_RenderText_Solid(font, backText.c_str(), color);
     if (!backSurface) {
