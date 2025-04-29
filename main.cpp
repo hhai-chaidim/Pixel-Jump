@@ -1,10 +1,14 @@
 #include "header/library.h"
 
 int main(int argc, char* argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     srand(static_cast<unsigned int>(time(nullptr)));
     TTF_Init();
     
+    if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+        std::cerr << "Không thể khởi tạo SDL_mixer: " << Mix_GetError() << std::endl;
+        return -1;
+    }
     SDL_Window* window     = SDL_CreateWindow("Pixel Jump", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 640, SDL_WINDOW_SHOWN);
     SDL_ShowCursor(SDL_DISABLE);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
@@ -17,6 +21,7 @@ int main(int argc, char* argv[]) {
     SDL_Texture* jumpTexture       = IMG_LoadTexture(renderer, "data/Pink/Jump.png");
     SDL_Texture* fallTexture       = IMG_LoadTexture(renderer, "data/Pink/Fall.png");
     SDL_Texture* hitTexture        = IMG_LoadTexture(renderer, "data/Pink/Hit (32x32).png");
+    SDL_Texture* deadTexture       = IMG_LoadTexture(renderer, "data/Pink/die (32x32).png");
     SDL_Texture* backgroundTexture = IMG_LoadTexture(renderer, "data/Background/background2.1.png");
     SDL_Texture* mapTexture        = IMG_LoadTexture(renderer, "data/Map/map.png");
     SDL_Surface* enemySurface      = IMG_Load("data/Pink/enemy.png");
@@ -26,6 +31,28 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to load character image! SDL_image Error: " << IMG_GetError() << std::endl;
     }
 
+    Mix_Chunk* jumpSound = Mix_LoadWAV("data/SoundEffect/jump.mp3");
+    Mix_Chunk* shootSound = Mix_LoadWAV("data/SoundEffect/shoot.mp3");
+    Mix_Chunk* enemyDieSound = Mix_LoadWAV("data/SoundEffect/die.mp3");
+    if (!jumpSound || !shootSound || !enemyDieSound) {
+        std::cerr << "Không thể tải âm thanh: " << Mix_GetError() << std::endl;
+        Mix_CloseAudio();
+        SDL_Quit();
+        return -1;
+    }
+
+    Mix_Music* backgroundMusic = Mix_LoadMUS("data/SoundEffect/soundbackground.mp3");
+    if (!backgroundMusic) {
+        std::cerr << "Không thể tải nhạc nền: " << Mix_GetError() << std::endl;
+        Mix_FreeChunk(jumpSound);
+        Mix_FreeChunk(shootSound);
+        Mix_FreeChunk(enemyDieSound);
+        Mix_CloseAudio();
+        SDL_Quit();
+        return -1;
+    }
+    Mix_PlayMusic(backgroundMusic, -1);
+
     adjustDifficulty();
     std::vector<Bullet> bullets;
 
@@ -34,6 +61,8 @@ int main(int argc, char* argv[]) {
     int settingsOption        = 0;
     int pausedOption          = 0;
     int deadOption            = 0;
+    int killCount             = 0;
+    int highscore             = loadHighscore();
     Square square             = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
     const float friction      = 0.8f;
     Uint32 lastTime           = SDL_GetTicks();
@@ -47,6 +76,8 @@ int main(int argc, char* argv[]) {
     std::vector<Enemy> enemies;
     SDL_Event e;
     
+    int previousLives = square.lives;
+
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) quit = true;
@@ -57,10 +88,10 @@ int main(int argc, char* argv[]) {
                         if (e.key.keysym.sym == SDLK_DOWN) selectedOption = (selectedOption + 1) % 4;
                         if (e.key.keysym.sym == SDLK_RETURN) {
                             if (selectedOption == 0) {
-                                gameState = PLAYING;
+                                gameState         = PLAYING;
                                 firstPlayingFrame = true;
-                                isDead = false;
-                                square = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
+                                isDead            = false;
+                                square            = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
                                 int startRow = static_cast<int>(square.y + square.size) / TILE_SIZE;
                                 int startCol = static_cast<int>(square.x) / TILE_SIZE;
                                 if (startRow >= 0 && startRow < 20 && startCol >= 0 && startCol < 40) {
@@ -72,7 +103,7 @@ int main(int argc, char* argv[]) {
                                             }
                                         }
                                         if (square.y + square.size > 640) {
-                                            square.y = 400;
+                                            square.y  = 400;
                                             square.vy = 0;
                                         }
                                     } else {
@@ -114,6 +145,11 @@ int main(int argc, char* argv[]) {
                             }
                         }
                         break;
+                    case HIGHSCORE:
+                        if (e.key.keysym.sym == SDLK_RETURN) {
+                            gameState = MENU;
+                        }
+                        break;
                     case PLAYING:
                         if (e.key.keysym.sym == SDLK_p) gameState = PAUSED;
                         break;
@@ -126,7 +162,7 @@ int main(int argc, char* argv[]) {
                             else if (pausedOption == 2) {
                                 gameState    = MENU;
                                 pausedOption = 0;
-                                square       = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false, false};
+                                resetGame(square, bullets, enemies, killCount);
                                 isDead       = false;
                             }
                         }
@@ -168,9 +204,20 @@ int main(int argc, char* argv[]) {
         }
         if (gameState == MENU) renderMenu(renderer, selectedOption, font, backgroundTexture);
         else if (gameState == SETTINGS) renderSettings(renderer, settingsOption, font, backgroundTexture);
+        else if (gameState == HIGHSCORE) renderHighscore(renderer, font, backgroundTexture, highscore);
         else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font, backgroundTexture);
-        else if (gameState == DEAD) renderDead(renderer, deadOption, font, backgroundTexture);
+        else if (gameState == DEAD) {
+            if (killCount > highscore) {
+                highscore = killCount;
+                saveHighscore(highscore);
+            }
+            renderDead(renderer, deadOption, font, backgroundTexture);
+        }
+
         else if (gameState == PLAYING) {
+
+            handleInput(square, bullets, renderer, quit, jumpStarted, jumpSound, shootSound);
+
             if (firstPlayingFrame) {
                 square            = {544, 128, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, square.lives, 0, 32, 32, false, false};
                 lastTime          = SDL_GetTicks();
@@ -182,18 +229,25 @@ int main(int argc, char* argv[]) {
             int mouseX, mouseY;
             SDL_GetMouseState(&mouseX, &mouseY);
 
-            handleInput(square, bullets, renderer, quit, jumpStarted);
+            
             float deltaTime = (currentTime - lastTime) / 1000.0f;
             if (deltaTime > 0.1f) deltaTime = 0.1f;
             lastTime = currentTime;
 
-            if (currentTime - lastEnemySpawnTime > 1000) {
+            if (currentTime - lastEnemySpawnTime > 2500) {
                 spawnEnemy(enemies);
                 lastEnemySpawnTime = currentTime;
             }
 
             updateEnemies(enemies, square, 1280, 640);
             checkBulletEnemyCollisions(bullets, enemies);
+            int killedThisFrame = checkBulletEnemyCollisions(bullets, enemies);
+            killCount += killedThisFrame;
+            if (killedThisFrame > 0) {
+                std::cout << "Tổng số địch tiêu diệt hiện tại: " << killCount << std::endl;
+                Mix_PlayChannel(-1, enemyDieSound, 0);
+            }
+            spawnEnemiesIfAllDefeated(enemies, 5);
         
             square.vy += gravity * deltaTime;
             
@@ -202,47 +256,89 @@ int main(int argc, char* argv[]) {
             if (square.vy > MAX_VELOCITY) square.vy  = MAX_VELOCITY;
             if (square.vy < -MAX_VELOCITY) square.vy = -MAX_VELOCITY;
         
-            
+
             float nextX = square.x + square.vx * deltaTime;
             float nextY = square.y + square.vy * deltaTime;
-            
-            int currentCol = static_cast<int>(square.x) / TILE_SIZE;
-            int currentRow = static_cast<int>((square.y + square.size / 2)) / TILE_SIZE;
-            int nextCol    = static_cast<int>(nextX) / TILE_SIZE;
-            int nextRow    = static_cast<int>(nextY + square.size) / TILE_SIZE;
-            
+
+            int currentColLeft = static_cast<int>(square.x) / TILE_SIZE;
+            int currentColRight = static_cast<int>(square.x + square.size - 1) / TILE_SIZE;
+            int currentRowTop = static_cast<int>(square.y) / TILE_SIZE;
+            int currentRowBottom = static_cast<int>(square.y + square.size - 1) / TILE_SIZE;
+
+            int nextColLeft = static_cast<int>(nextX) / TILE_SIZE;
+            int nextColRight = static_cast<int>(nextX + square.size - 1) / TILE_SIZE;
+            int nextRowTop = static_cast<int>(nextY) / TILE_SIZE;
+            int nextRowBottom = static_cast<int>(nextY + square.size - 1) / TILE_SIZE;
+
             bool collisionX = false;
             bool collisionY = false;
-            
-            if (nextCol >= 0 && nextCol < 40 && currentRow >= 0 && currentRow < 20) {
-                if (matrix[currentRow][nextCol] == 1) {
-                    if (square.vx > 0 && nextX + square.size > nextCol * TILE_SIZE) {
-                        nextX = nextCol * TILE_SIZE - square.size;
-                        collisionX = true;
-                    } else if (square.vx < 0 && nextX < (nextCol + 1) * TILE_SIZE) {
-                        nextX = (nextCol + 1) * TILE_SIZE;
-                        collisionX = true;
+
+            if (square.vx != 0) {
+                int testCol = (square.vx > 0) ? nextColRight : nextColLeft;
+                if (testCol >= 0 && testCol < 40) {
+                    for (int row = currentRowTop; row <= currentRowBottom; row++) {
+                        if (row >= 0 && row < 20 && matrix[row][testCol] == 1) {
+                            if (square.vx > 0) {
+                                nextX = testCol * TILE_SIZE - square.size;
+                            } else {
+                                nextX = (testCol + 1) * TILE_SIZE;
+                            }
+                            square.vx = 0;
+                            collisionX = true;
+                            break;
+                        }
                     }
                 }
             }
-            
-            if (nextRow >= 0 && nextRow < 20 && nextCol >= 0 && nextCol < 40) {
-                if (matrix[nextRow][nextCol] == 1) {
-                    if (square.vy >= 0 && nextY + square.size > nextRow * TILE_SIZE) {
-                        nextY               = nextRow * TILE_SIZE - square.size;
-                        square.vy           = 0;
-                        square.isJumping    = false;
-                        square.jumpKeyHeld  = false;
-                        square.initialJumpY = 0;
-                        collisionY          = true;
-                    } else if (square.vy < 0 && nextY < (nextRow + 1) * TILE_SIZE) {
-                        nextY      = (nextRow + 1) * TILE_SIZE;
-                        square.vy  = 0;
-                        collisionY = true;
+
+            float updatedX = nextX;
+
+            if (square.vy != 0) {
+                int testRow = (square.vy > 0) ? nextRowBottom : nextRowTop;
+                if (testRow >= 0 && testRow < 20) {
+                    for (int col = nextColLeft; col <= nextColRight; col++) {
+                        if (col >= 0 && col < 40 && matrix[testRow][col] == 1) {
+                            if (square.vy > 0) {
+                                nextY = testRow * TILE_SIZE - square.size;
+                                square.vy = 0;
+                                square.isJumping = false;
+                                square.jumpKeyHeld = false;
+                                square.initialJumpY = 0;
+                            } else {
+                                nextY = (testRow + 1) * TILE_SIZE;
+                                square.vy = 0;
+                            }
+                            collisionY = true;
+                            break;
+                        }
                     }
                 }
             }
-            
+
+            bool isOnGround = false;
+            int testRowBelow = static_cast<int>((square.y + square.size + 1) / TILE_SIZE);
+            if (testRowBelow >= 0 && testRowBelow < 20) {
+                for (int col = nextColLeft; col <= nextColRight; col++) {
+                    if (col >= 0 && col < 40 && matrix[testRowBelow][col] == 1) {
+                        isOnGround = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isOnGround) {
+                square.isJumping = false;
+                square.jumpKeyHeld = false;
+                square.initialJumpY = 0;
+                if (square.vy >= 0) {
+                    square.vy = 0;
+                }
+            }
+
+            if (!isOnGround && !square.isJumping && square.vy == 0) {
+                square.vy = gravity * deltaTime;
+            }
+
             square.x = nextX;
             square.y = nextY;
             
@@ -269,6 +365,7 @@ int main(int argc, char* argv[]) {
                 isDead    = true;
                 resetEnemies(enemies, 1280, 640);
                 bullets.clear();
+
                 std::cout << "Game Over: No lives left!" << std::endl;
             }
 
@@ -285,17 +382,22 @@ int main(int argc, char* argv[]) {
             SDL_Rect backgroundRect = {0, 0, 1280, 640};
             SDL_RenderCopy(renderer, mapTexture, NULL, &backgroundRect);
 
-            SDL_Texture* currentTexture  = square.isMoving ? runTexture : idleTexture;
-            if (square.isHit){
+            SDL_Texture* currentTexture = idleTexture;
+            if (square.vy == 0 && square.vx == 0) {
+                currentTexture = idleTexture;
+            } else if (square.isDead) {
+                currentTexture = deadTexture;
+            } else if (square.isHit) {
                 currentTexture = hitTexture;
-                square.isHit   = false;   
-            }
-            SDL_Texture* jumpFallTexture = square.vy < 0 ? jumpTexture : (square.vy > 0 ? fallTexture : idleTexture);
-            if (square.isJumping || square.vy != 0) {
-                SDL_Rect srcRect      = {0, 0, 32, 32};
-                SDL_Rect destRect     = {static_cast<int>(square.x), static_cast<int>(square.y), 32, 32};
-                SDL_RendererFlip flip = square.facing ? SDL_FLIP_NONE : SDL_FLIP_HORIZONTAL;
-                SDL_RenderCopyEx(renderer, jumpFallTexture, &srcRect, &destRect, 0, NULL, flip);
+                square.isHit = false;
+            } else if (square.isJumping) {
+                currentTexture = jumpTexture;        
+            } else if (square.vy > 0) {
+                currentTexture = fallTexture;
+            } else if (square.vy < 0) {
+                currentTexture = jumpTexture;
+            } else if (square.isMoving) {
+                currentTexture = runTexture;
             }
             
             SDL_Rect srcRect      = {square.currentFrameX * 32, 0, 32, 32};
@@ -307,6 +409,7 @@ int main(int argc, char* argv[]) {
 
             renderEnemies(renderer, enemies, enemyTexture);
             renderHearts(renderer, square.lives);
+            drawKillCount(renderer, font, killCount);
             SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
 
             renderCrosshair(renderer, mouseX, mouseY);
@@ -314,6 +417,12 @@ int main(int argc, char* argv[]) {
             SDL_Delay(16);
         }
     };
+
+    Mix_FreeChunk(jumpSound);
+    Mix_FreeChunk(shootSound);
+    Mix_FreeChunk(enemyDieSound);
+    Mix_FreeMusic(backgroundMusic);
+    Mix_CloseAudio();
     
     TTF_CloseFont(font);
     TTF_Quit();

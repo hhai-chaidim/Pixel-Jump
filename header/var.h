@@ -1,7 +1,7 @@
 #ifndef VAR_H
 #define VAR_H
 
-#define MAX_VELOCITY 1000
+#define MAX_VELOCITY 700
 #define ACCELERATION 0.5f
 #define FRAME_DELAY 60
 #define INITIAL_JUMP_VELOCITY -200.0f

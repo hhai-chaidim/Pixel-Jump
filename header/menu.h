@@ -184,5 +184,89 @@ void renderHearts(SDL_Renderer* renderer, int lives) {
     }
 }
 
+void renderHighscore(SDL_Renderer* renderer, TTF_Font* font, SDL_Texture* backgroundTexture, int highscore) {
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    // Vẽ nền
+    SDL_Rect backgroundRect = {0, 0, 1280, 640};
+    SDL_RenderCopy(renderer, backgroundTexture, NULL, &backgroundRect);
+
+    // Vẽ tiêu đề "Highscore"
+    SDL_Color color = {255, 255, 255, 255};
+    std::string titleText = "Highscore";
+    SDL_Surface* titleSurface = TTF_RenderText_Solid(font, titleText.c_str(), color);
+    if (!titleSurface) {
+        std::cerr << "Không thể tạo surface cho tiêu đề: " << TTF_GetError() << std::endl;
+        return;
+    }
+    SDL_Texture* titleTexture = SDL_CreateTextureFromSurface(renderer, titleSurface);
+    if (!titleTexture) {
+        std::cerr << "Không thể tạo texture cho tiêu đề: " << SDL_GetError() << std::endl;
+        SDL_FreeSurface(titleSurface);
+        return;
+    }
+    int titleW, titleH;
+    SDL_QueryTexture(titleTexture, nullptr, nullptr, &titleW, &titleH);
+    SDL_Rect titleRect = {1280 / 2 - titleW / 2, 200, titleW, titleH};
+    SDL_RenderCopy(renderer, titleTexture, nullptr, &titleRect);
+
+    // Vẽ highscore
+    std::string highscoreText = "High Score: " + std::to_string(highscore);
+    SDL_Surface* highscoreSurface = TTF_RenderText_Solid(font, highscoreText.c_str(), color);
+    if (!highscoreSurface) {
+        std::cerr << "Không thể tạo surface cho highscore: " << TTF_GetError() << std::endl;
+        SDL_FreeSurface(titleSurface);
+        SDL_DestroyTexture(titleTexture);
+        return;
+    }
+    SDL_Texture* highscoreTexture = SDL_CreateTextureFromSurface(renderer, highscoreSurface);
+    if (!highscoreTexture) {
+        std::cerr << "Không thể tạo texture cho highscore: " << SDL_GetError() << std::endl;
+        SDL_FreeSurface(titleSurface);
+        SDL_DestroyTexture(titleTexture);
+        SDL_FreeSurface(highscoreSurface);
+        return;
+    }
+    int highscoreW, highscoreH;
+    SDL_QueryTexture(highscoreTexture, nullptr, nullptr, &highscoreW, &highscoreH);
+    SDL_Rect highscoreRect = {1280 / 2 - highscoreW / 2, 300, highscoreW, highscoreH};
+    SDL_RenderCopy(renderer, highscoreTexture, nullptr, &highscoreRect);
+
+    // Vẽ hướng dẫn quay lại menu
+    std::string backText = "ENTER to return to menu";
+    SDL_Surface* backSurface = TTF_RenderText_Solid(font, backText.c_str(), color);
+    if (!backSurface) {
+        std::cerr << "Không thể tạo surface cho hướng dẫn: " << TTF_GetError() << std::endl;
+        SDL_FreeSurface(titleSurface);
+        SDL_DestroyTexture(titleTexture);
+        SDL_FreeSurface(highscoreSurface);
+        SDL_DestroyTexture(highscoreTexture);
+        return;
+    }
+    SDL_Texture* backTexture = SDL_CreateTextureFromSurface(renderer, backSurface);
+    if (!backTexture) {
+        std::cerr << "Không thể tạo texture cho hướng dẫn: " << SDL_GetError() << std::endl;
+        SDL_FreeSurface(titleSurface);
+        SDL_DestroyTexture(titleTexture);
+        SDL_FreeSurface(highscoreSurface);
+        SDL_DestroyTexture(highscoreTexture);
+        SDL_FreeSurface(backSurface);
+        return;
+    }
+    int backW, backH;
+    SDL_QueryTexture(backTexture, nullptr, nullptr, &backW, &backH);
+    SDL_Rect backRect = {1280 / 2 - backW / 2, 400, backW, backH};
+    SDL_RenderCopy(renderer, backTexture, nullptr, &backRect);
+
+    SDL_FreeSurface(titleSurface);
+    SDL_DestroyTexture(titleTexture);
+    SDL_FreeSurface(highscoreSurface);
+    SDL_DestroyTexture(highscoreTexture);
+    SDL_FreeSurface(backSurface);
+    SDL_DestroyTexture(backTexture);
+
+    SDL_RenderPresent(renderer);
+}
 
 #endif
