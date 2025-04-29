@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
     Mix_Chunk* jumpSound = Mix_LoadWAV("data/SoundEffect/jump.mp3");
     Mix_Chunk* shootSound = Mix_LoadWAV("data/SoundEffect/shoot.mp3");
     Mix_Chunk* enemyDieSound = Mix_LoadWAV("data/SoundEffect/die.mp3");
+    Mix_Chunk* selectSound = Mix_LoadWAV("data/SoundEffect/enter.mp3");
     if (!jumpSound || !shootSound || !enemyDieSound) {
         std::cerr << "Không thể tải âm thanh: " << Mix_GetError() << std::endl;
         Mix_CloseAudio();
@@ -87,6 +88,7 @@ int main(int argc, char* argv[]) {
                         if (e.key.keysym.sym == SDLK_UP) selectedOption = (selectedOption + 3) % 4;
                         if (e.key.keysym.sym == SDLK_DOWN) selectedOption = (selectedOption + 1) % 4;
                         if (e.key.keysym.sym == SDLK_RETURN) {
+                            Mix_PlayChannel(-1, selectSound, 0);
                             if (selectedOption == 0) {
                                 gameState         = PLAYING;
                                 firstPlayingFrame = true;
@@ -128,6 +130,7 @@ int main(int argc, char* argv[]) {
                         if (e.key.keysym.sym == SDLK_UP && settingsOption > 0) settingsOption--;
                         if (e.key.keysym.sym == SDLK_DOWN && settingsOption < 3) settingsOption++;
                         if (e.key.keysym.sym == SDLK_RETURN) {
+                            Mix_PlayChannel(-1, selectSound, 0);
                             if (settingsOption == 0) {
                                 difficulty = EASY;
                                 adjustDifficulty();
@@ -147,6 +150,7 @@ int main(int argc, char* argv[]) {
                         break;
                     case HIGHSCORE:
                         if (e.key.keysym.sym == SDLK_RETURN) {
+                            Mix_PlayChannel(-1, selectSound, 0);
                             gameState = MENU;
                         }
                         break;
@@ -157,6 +161,7 @@ int main(int argc, char* argv[]) {
                         if (e.key.keysym.sym == SDLK_UP) pausedOption = (pausedOption + 2) % 3;
                         if (e.key.keysym.sym == SDLK_DOWN) pausedOption = (pausedOption + 1) % 3;
                         if (e.key.keysym.sym == SDLK_RETURN) {
+                            Mix_PlayChannel(-1, selectSound, 0);
                             if (pausedOption == 0) gameState = PLAYING;
                             else if (pausedOption == 1) quit = true;
                             else if (pausedOption == 2) {
@@ -171,6 +176,7 @@ int main(int argc, char* argv[]) {
                         if (e.key.keysym.sym == SDLK_UP) deadOption = (deadOption + 2) % 3;
                         if (e.key.keysym.sym == SDLK_DOWN) deadOption = (deadOption + 1) % 3;
                         if (e.key.keysym.sym == SDLK_RETURN) {
+                            Mix_PlayChannel(-1, selectSound, 0);
                             if (deadOption == 0) {
                                 gameState         = PLAYING;
                                 firstPlayingFrame = true;
