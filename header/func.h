@@ -223,6 +223,9 @@ int loadHighscore() {
     if (file.is_open()) {
         file >> highscore;
         file.close();
+        std::cout << "Highscore loaded: " << highscore << std::endl;
+    } else {
+        std::cout << "No highscore file found, starting with 0" << std::endl;
     }
     return highscore;
 }
@@ -232,6 +235,9 @@ void saveHighscore(int highscore) {
     if (file.is_open()) {
         file << highscore;
         file.close();
+        std::cout << "Highscore saved: " << highscore << std::endl;
+    } else {
+        std::cerr << "Error: Could not save highscore to highscore.txt" << std::endl;
     }
 }
 

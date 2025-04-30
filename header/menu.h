@@ -24,27 +24,27 @@ void adjustDifficulty() {
     switch (difficulty) {
         case EASY:
             gravity = 50.0f;
-            MAX_VELOCITY = 50.0f;
+            MAX_VELOCITY = 60.0f;
             ENEMY_SPEED_MULTIPLIER = 0.5f;
-            ACCELERATION = 1.2f;
+            ACCELERATION = 1.5f;
             FRICTION = 0.90f;
-            JUMP_VELOCITY = 300.0f;
+            JUMP_VELOCITY = 360.0f;
             break;
         case MEDIUM:
             gravity = 100.0f;
-            MAX_VELOCITY = 75.0f;
+            MAX_VELOCITY = 90.0f;
             ENEMY_SPEED_MULTIPLIER = 1.0f;
-            ACCELERATION = 2.0f;
+            ACCELERATION = 2.4f;
             FRICTION = 0.95f;
-            JUMP_VELOCITY = 240.0f;
+            JUMP_VELOCITY = 288.0f;
             break;
         case HARD:
             gravity = 150.0f;
-            MAX_VELOCITY = 100.0f;
+            MAX_VELOCITY = 120.0f;
             ENEMY_SPEED_MULTIPLIER = 1.5f;
-            ACCELERATION = 3.0f;
+            ACCELERATION = 3.6f;
             FRICTION = 0.98f;
-            JUMP_VELOCITY = 190.0f;
+            JUMP_VELOCITY = 228.0f;
             break;
     }
     std::cout << "Difficulty set to: " << (difficulty == EASY ? "EASY" : difficulty == MEDIUM ? "MEDIUM" : "HARD")

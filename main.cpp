@@ -213,10 +213,6 @@ int main(int argc, char* argv[]) {
         else if (gameState == HIGHSCORE) renderHighscore(renderer, font, backgroundTexture, highscore);
         else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font, backgroundTexture);
         else if (gameState == DEAD) {
-            if (killCount > highscore) {
-                highscore = killCount;
-                saveHighscore(highscore);
-            }
             renderDead(renderer, deadOption, font, backgroundTexture);
         }
 

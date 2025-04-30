@@ -4,9 +4,9 @@
 float gravity;
 float MAX_VELOCITY = 75.0f;
 float ENEMY_SPEED_MULTIPLIER = 1.0f;
-float ACCELERATION = 1.2f;
+float ACCELERATION = 0.5f;
 float FRICTION = 0.95f;
-float JUMP_VELOCITY = 50.0f;
+float JUMP_VELOCITY = 200.0f;
 
 const int FRAME_DELAY = 60;
 const int TILE_SIZE = 32;
