@@ -25,8 +25,10 @@ struct Square {
 };
 
 struct Enemy {
-    float x, y, vx, vy, radius;
+    float x, y;
+    float vx, vy;
     int w, h;
+    float radius;
     bool alive;
 };
 

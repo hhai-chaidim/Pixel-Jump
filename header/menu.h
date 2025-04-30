@@ -19,15 +19,41 @@ enum GameState { MENU, SETTINGS, HIGHSCORE, PLAYING, PAUSED, DEAD, EXIT };
 enum Difficulty { EASY, MEDIUM, HARD };
 
 Difficulty difficulty = MEDIUM;
-float gravity;
 
 void adjustDifficulty() {
     switch (difficulty) {
-        case EASY: gravity = 120.0f; break;
-        case MEDIUM: gravity = 240.0f; break;
-        case HARD: gravity = 320.0f; break;
+        case EASY:
+            gravity = 50.0f;
+            MAX_VELOCITY = 50.0f;
+            ENEMY_SPEED_MULTIPLIER = 0.5f;
+            ACCELERATION = 1.2f;
+            FRICTION = 0.90f;
+            JUMP_VELOCITY = 300.0f;
+            break;
+        case MEDIUM:
+            gravity = 100.0f;
+            MAX_VELOCITY = 75.0f;
+            ENEMY_SPEED_MULTIPLIER = 1.0f;
+            ACCELERATION = 2.0f;
+            FRICTION = 0.95f;
+            JUMP_VELOCITY = 240.0f;
+            break;
+        case HARD:
+            gravity = 150.0f;
+            MAX_VELOCITY = 100.0f;
+            ENEMY_SPEED_MULTIPLIER = 1.5f;
+            ACCELERATION = 3.0f;
+            FRICTION = 0.98f;
+            JUMP_VELOCITY = 190.0f;
+            break;
     }
-    std::cout << "Difficulty set to: " << (difficulty == EASY ? "EASY" : difficulty == MEDIUM ? "MEDIUM" : "HARD") << ", Gravity: " << gravity << std::endl;
+    std::cout << "Difficulty set to: " << (difficulty == EASY ? "EASY" : difficulty == MEDIUM ? "MEDIUM" : "HARD")
+              << ", Gravity: " << gravity
+              << ", Max Velocity: " << MAX_VELOCITY
+              << ", Enemy Speed Multiplier: " << ENEMY_SPEED_MULTIPLIER
+              << ", Acceleration: " << ACCELERATION
+              << ", Friction: " << FRICTION
+              << ", Jump Velocity: " << JUMP_VELOCITY << std::endl;
 }
 
 void renderMenu(SDL_Renderer* renderer, int selected, TTF_Font* font, SDL_Texture* backgroundTexture) {

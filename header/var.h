@@ -1,15 +1,16 @@
 #ifndef VAR_H
 #define VAR_H
 
-#define MAX_VELOCITY 700
-#define ACCELERATION 0.5f
-#define FRAME_DELAY 60
-#define INITIAL_JUMP_VELOCITY -200.0f
-#define TILE_SIZE 32
-#define HEART_SIZE 32
-#define FRICTION 0.95f
-#define MAX_SPEED 75.0f
-#define JUMP_VELOCITY 200.0f
+float gravity;
+float MAX_VELOCITY = 75.0f;
+float ENEMY_SPEED_MULTIPLIER = 1.0f;
+float ACCELERATION = 1.2f;
+float FRICTION = 0.95f;
+float JUMP_VELOCITY = 50.0f;
+
+const int FRAME_DELAY = 60;
+const int TILE_SIZE = 32;
+const int HEART_SIZE = 32;
 
 bool collisionX = false;
 bool collisionY = false;

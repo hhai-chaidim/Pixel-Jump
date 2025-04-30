@@ -19,8 +19,10 @@ void spawnEnemy(std::vector<Enemy>& enemies) {
     Enemy e;
     e.x = rand() % 800;
     e.y = 0;
-    e.vx = 0.2f;
-    e.vy = 0.2f;
+    e.vx = 0.2f * ENEMY_SPEED_MULTIPLIER;
+    e.vy = 0.2f * ENEMY_SPEED_MULTIPLIER;
+    e.w = 32;
+    e.h = 32;
     e.radius = 16;
     e.alive = true;
     enemies.push_back(e);
@@ -29,15 +31,13 @@ void spawnEnemy(std::vector<Enemy>& enemies) {
 void resetEnemy(Enemy &enemy, int screenWidth, int screenHeight) {
     enemy.x = rand() % screenWidth;
     enemy.y = rand() % screenHeight;
-    enemy.vx = 1 + rand() % 3;
-    enemy.vy = 1 + rand() % 3;
+    float baseSpeed = 1 + rand() % 3;
+    enemy.vx = baseSpeed * ENEMY_SPEED_MULTIPLIER;
+    enemy.vy = baseSpeed * ENEMY_SPEED_MULTIPLIER;
+    enemy.w = 32;
+    enemy.h = 32;
+    enemy.radius = 16;
     enemy.alive = true;
-}
-
-void resetEnemies(std::vector<Enemy> &enemies, int screenWidth, int screenHeight) {
-    for (auto &enemy : enemies) {
-        resetEnemy(enemy, screenWidth, screenHeight);
-    }
 }
 
 void updateEnemies(std::vector<Enemy>& enemies, Square& square, int screenWidth, int screenHeight) {
@@ -45,8 +45,12 @@ void updateEnemies(std::vector<Enemy>& enemies, Square& square, int screenWidth,
         float dx = (square.x + square.w / 2) - e.x;
         float dy = (square.y + square.h / 2) - e.y;
         float distSq = dx * dx + dy * dy;
-        float Dx = dx / sqrt(distSq);
-        float Dy = dy / sqrt(distSq);
+
+        float Dx = 0, Dy = 0;
+        if (distSq > 0.0001f) {
+            Dx = dx / sqrt(distSq);
+            Dy = dy / sqrt(distSq);
+        }
 
         e.x += e.vx * Dx;
         e.y += e.vy * Dy;
@@ -124,7 +128,12 @@ int checkBulletEnemyCollisions(std::vector<Bullet>& bullets, std::vector<Enemy>&
         for (auto& enemy : enemies) {
             if (!enemy.alive) continue;
 
-            SDL_Rect enemyRect = {(int)enemy.x, (int)enemy.y, enemy.w, enemy.h};
+            SDL_Rect enemyRect = {
+                (int)(enemy.x - enemy.radius),
+                (int)(enemy.y - enemy.radius),
+                (int)(enemy.radius * 2),
+                (int)(enemy.radius * 2)
+            };
 
             if (SDL_HasIntersection(&bulletRect, &enemyRect)) {
                 bullet.active = false;
@@ -159,8 +168,9 @@ void spawnEnemiesIfAllDefeated(std::vector<Enemy>& enemies, int numEnemiesToSpaw
             Enemy newEnemy;
             newEnemy.x = rand() % (1280 - 32);
             newEnemy.y = rand() % 200;
-            newEnemy.vx = 0.5f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (2.0f - 0.5f)));
-            newEnemy.vy = 0.5f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (2.0f - 0.5f)));
+            float baseSpeed = 0.5f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (2.0f - 0.5f)));
+            newEnemy.vx = baseSpeed * ENEMY_SPEED_MULTIPLIER;
+            newEnemy.vy = baseSpeed * ENEMY_SPEED_MULTIPLIER;
             newEnemy.w = 32;
             newEnemy.h = 32;
             newEnemy.radius = 16;
@@ -172,7 +182,7 @@ void spawnEnemiesIfAllDefeated(std::vector<Enemy>& enemies, int numEnemiesToSpaw
 }
 
 void drawKillCount(SDL_Renderer* renderer, TTF_Font* font, int killCount) {
-    std::string text = "KIlls " + std::to_string(killCount);
+    std::string text = "Kills " + std::to_string(killCount);
     SDL_Color color = {255, 255, 255, 255};
     SDL_Surface* surface = TTF_RenderText_Solid(font, text.c_str(), color);
     if (!surface) {

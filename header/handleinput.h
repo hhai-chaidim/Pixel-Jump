@@ -17,14 +17,15 @@ void handleInput(Square& square, std::vector<Bullet>& bullets, SDL_Renderer* ren
 
     static Uint32 lastBulletTime = 0;
     const Uint32 bulletDelay = 200;
+    static Uint32 lastHitTime = 0;
 
     if (state[SDL_SCANCODE_LEFT]) {
-        square.vx = -500;
+        square.vx -= ACCELERATION;
         square.facing = false;
         square.isMoving = true;
     } 
     else if (state[SDL_SCANCODE_RIGHT]) {
-        square.vx = 500;
+        square.vx += ACCELERATION;
         square.facing = true;
         square.isMoving = true;
     } 
@@ -33,8 +34,8 @@ void handleInput(Square& square, std::vector<Bullet>& bullets, SDL_Renderer* ren
         if (fabs(square.vx) < 0.1f) square.vx = 0;
     }
 
-    if (square.vx > MAX_SPEED) square.vx = MAX_SPEED;
-    if (square.vx < -MAX_SPEED) square.vx = -MAX_SPEED;
+    if (square.vx > MAX_VELOCITY) square.vx = MAX_VELOCITY;
+    if (square.vx < -MAX_VELOCITY) square.vx = -MAX_VELOCITY;
 
     if (state[SDL_SCANCODE_UP]) {
         if (!square.isJumping && !jumpStarted) {
@@ -60,8 +61,15 @@ void handleInput(Square& square, std::vector<Bullet>& bullets, SDL_Renderer* ren
             std::cout << "Mouse held at: (" << mouseX << ", " << mouseY << ")" << std::endl;
             shootBullet(renderer, square, bullets, mouseX, mouseY);
             square.isHit = true;
+            lastHitTime = currentTime;
             Mix_PlayChannel(-1, shootSound, 0);
             lastBulletTime = currentTime;
+        }
+    }
+
+    if (square.isHit) {
+        if (currentTime - lastHitTime >= 200) {
+            square.isHit = false;
         }
     }
 }

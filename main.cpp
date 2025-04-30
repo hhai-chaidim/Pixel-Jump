@@ -246,7 +246,6 @@ int main(int argc, char* argv[]) {
             }
 
             updateEnemies(enemies, square, 1280, 640);
-            checkBulletEnemyCollisions(bullets, enemies);
             int killedThisFrame = checkBulletEnemyCollisions(bullets, enemies);
             killCount += killedThisFrame;
             if (killedThisFrame > 0) {
@@ -369,7 +368,11 @@ int main(int argc, char* argv[]) {
                 gameState = DEAD;
                 square    = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false};
                 isDead    = true;
-                resetEnemies(enemies, 1280, 640);
+                resetGame(square, bullets, enemies, killCount);
+                if (killCount > highscore) {
+                    highscore = killCount;
+                    saveHighscore(highscore);
+                }
                 bullets.clear();
 
                 std::cout << "Game Over: No lives left!" << std::endl;
@@ -427,6 +430,7 @@ int main(int argc, char* argv[]) {
     Mix_FreeChunk(jumpSound);
     Mix_FreeChunk(shootSound);
     Mix_FreeChunk(enemyDieSound);
+    Mix_FreeChunk(selectSound);
     Mix_FreeMusic(backgroundMusic);
     Mix_CloseAudio();
     
