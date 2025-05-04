@@ -35,7 +35,8 @@ int main(int argc, char* argv[]) {
     Mix_Chunk* shootSound = Mix_LoadWAV("data/SoundEffect/shoot.mp3");
     Mix_Chunk* enemyDieSound = Mix_LoadWAV("data/SoundEffect/die.mp3");
     Mix_Chunk* selectSound = Mix_LoadWAV("data/SoundEffect/enter.mp3");
-    if (!jumpSound || !shootSound || !enemyDieSound) {
+    Mix_Chunk* hitSound = Mix_LoadWAV("data/SoundEffect/hit.mp3");
+    if (!jumpSound || !shootSound || !enemyDieSound || !selectSound || !hitSound) {
         std::cerr << "Không thể tải âm thanh: " << Mix_GetError() << std::endl;
         Mix_CloseAudio();
         SDL_Quit();
@@ -43,7 +44,8 @@ int main(int argc, char* argv[]) {
     }
 
     Mix_Music* backgroundMusic = Mix_LoadMUS("data/SoundEffect/soundbackground.mp3");
-    if (!backgroundMusic) {
+    Mix_Music* gameOverMusic = Mix_LoadMUS("data/SoundEffect/end.mp3");
+    if (!backgroundMusic || !gameOverMusic) {
         std::cerr << "Không thể tải nhạc nền: " << Mix_GetError() << std::endl;
         Mix_FreeChunk(jumpSound);
         Mix_FreeChunk(shootSound);
@@ -74,10 +76,12 @@ int main(int argc, char* argv[]) {
     bool firstPlayingFrame    = true;
     bool isDead               = false;
     bool jumpStarted          = false;
+    bool gameOverMusicPlayed = false;
     std::vector<Enemy> enemies;
     SDL_Event e;
     
     int previousLives = square.lives;
+    GameState previousGameState = MENU;
 
     while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
@@ -208,12 +212,31 @@ int main(int argc, char* argv[]) {
                 }
             }
         }
+
+        if (gameState != previousGameState) {
+            if (gameState == DEAD && !gameOverMusicPlayed) {
+                Mix_HaltMusic();
+                Mix_PlayMusic(gameOverMusic, -1);
+                gameOverMusicPlayed = true;
+                if (killCount > highscore) {
+                    highscore = killCount;
+                    saveHighscore(highscore);
+                }
+                std::cout << "Switched to game over music" << std::endl;
+            }
+            previousGameState = gameState;
+        }
+
         if (gameState == MENU) renderMenu(renderer, selectedOption, font, backgroundTexture);
         else if (gameState == SETTINGS) renderSettings(renderer, settingsOption, font, backgroundTexture);
         else if (gameState == HIGHSCORE) renderHighscore(renderer, font, backgroundTexture, highscore);
         else if (gameState == PAUSED) renderPaused(renderer, pausedOption, font, backgroundTexture);
         else if (gameState == DEAD) {
             renderDead(renderer, deadOption, font, backgroundTexture);
+            if (killCount > highscore) {
+                highscore = killCount;
+                saveHighscore(highscore);
+            }
         }
 
         else if (gameState == PLAYING) {
@@ -344,6 +367,10 @@ int main(int argc, char* argv[]) {
             square.y = nextY;
             
             if (square.x < -square.size || square.x > 1280 || square.y < -square.size || square.y > 640) {
+                if (square.lives > 0 && previousLives > square.lives) {
+                    Mix_PlayChannel(-1, hitSound, 0);
+                    std::cout << "Hit sound played. Lives decreased from " << previousLives << " to " << square.lives << std::endl;
+                }
                 square.lives     -= 1;
                 square.livesLost += 1;
                 square.isDead     = true;
@@ -360,6 +387,10 @@ int main(int argc, char* argv[]) {
                 square.jumpKeyHeld = false;
                 square.isDead      = false;
             } else if (square.lives <= 0) {
+                if (previousLives > square.lives) {
+                    Mix_PlayChannel(-1, hitSound, 0);
+                    std::cout << "Hit sound played. Lives decreased from " << previousLives << " to " << square.lives << std::endl;
+                }
                 survivalTime = SDL_GetTicks() - gameStartTime;
                 gameState = DEAD;
                 square    = {320, 400, 0, 0, 32, false, 0, 0, 0, true, false, 0, false, 3, 0, 32, 32, false};
@@ -373,6 +404,12 @@ int main(int argc, char* argv[]) {
 
                 std::cout << "Game Over: No lives left!" << std::endl;
             }
+
+            if (previousLives > square.lives) {
+                Mix_PlayChannel(-1, hitSound, 0);
+                std::cout << "Hit sound played. Lives decreased from " << previousLives << " to " << square.lives << std::endl;
+            }
+            previousLives = square.lives;
 
             if (currentTime - square.lastFrameTime > FRAME_DELAY) {
                 square.currentFrameX = (square.currentFrameX + 1) % 3;
@@ -428,6 +465,7 @@ int main(int argc, char* argv[]) {
     Mix_FreeChunk(enemyDieSound);
     Mix_FreeChunk(selectSound);
     Mix_FreeMusic(backgroundMusic);
+    Mix_FreeMusic(gameOverMusic);
     Mix_CloseAudio();
     
     TTF_CloseFont(font);
