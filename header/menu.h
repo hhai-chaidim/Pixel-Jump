@@ -25,7 +25,7 @@ void adjustDifficulty() {
         case EASY:
             gravity = 50.0f;
             MAX_VELOCITY = 60.0f;
-            ENEMY_SPEED_MULTIPLIER = 0.5f;
+            ENEMY_SPEED_MULTIPLIER = 2.5f;
             ACCELERATION = 1.5f;
             FRICTION = 0.90f;
             JUMP_VELOCITY = 360.0f;
@@ -33,15 +33,15 @@ void adjustDifficulty() {
         case MEDIUM:
             gravity = 100.0f;
             MAX_VELOCITY = 90.0f;
-            ENEMY_SPEED_MULTIPLIER = 1.0f;
-            ACCELERATION = 2.4f;
+            ENEMY_SPEED_MULTIPLIER = 3.0f;
+            ACCELERATION = 2.0f;
             FRICTION = 0.95f;
             JUMP_VELOCITY = 288.0f;
             break;
         case HARD:
             gravity = 150.0f;
             MAX_VELOCITY = 120.0f;
-            ENEMY_SPEED_MULTIPLIER = 1.5f;
+            ENEMY_SPEED_MULTIPLIER = 5.0f;
             ACCELERATION = 3.6f;
             FRICTION = 0.98f;
             JUMP_VELOCITY = 228.0f;

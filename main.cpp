@@ -221,8 +221,13 @@ int main(int argc, char* argv[]) {
                 if (killCount > highscore) {
                     highscore = killCount;
                     saveHighscore(highscore);
+                    std::cout << "Highscore updated to: " << highscore << " and saved" << std::endl;
                 }
                 std::cout << "Switched to game over music" << std::endl;
+            }
+            if (gameState == HIGHSCORE) {
+                highscore = loadHighscore();
+                std::cout << "Reloaded highscore for display: " << highscore << std::endl;
             }
             previousGameState = gameState;
         }
@@ -410,6 +415,12 @@ int main(int argc, char* argv[]) {
                 std::cout << "Hit sound played. Lives decreased from " << previousLives << " to " << square.lives << std::endl;
             }
             previousLives = square.lives;
+
+            if (killCount > highscore) {
+                highscore = killCount;
+                saveHighscore(highscore);
+                std::cout << "Highscore updated to: " << highscore << " and saved" << std::endl;
+            }
 
             if (currentTime - square.lastFrameTime > FRAME_DELAY) {
                 square.currentFrameX = (square.currentFrameX + 1) % 3;
